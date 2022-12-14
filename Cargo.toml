@@ -1,0 +1,19 @@
+[package]
+name = "flathub-ci"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.0.29", features = ["derive"] }
+diff = "0.1.13"
+# see https://github.com/mitsuhiko/elementtree-rust/pull/19
+elementtree = { git = "https://github.com/jameswestman/elementtree-rust", version = "1.2.2", branch = "retain-children" }
+env_logger = "0.10.0"
+flate2 = "1.0.25"
+log = "0.4.17"
+ostree = { version = "0.17.0", features = ["v2021_5"] }
+reqwest = { version = "0.11.13", features = ["json", "blocking"] }
+serde = { version = "1.0.150", features = ["derive"] }
+serde_json = "1.0.89"

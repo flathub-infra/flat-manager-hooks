@@ -1,0 +1,502 @@
+use std::{
+    collections::HashMap,
+    error::Error,
+    io::{Read, Write},
+};
+
+use clap::Args;
+use elementtree::Element;
+use flate2::{read::GzDecoder, write::GzEncoder, Compression};
+use log::info;
+use ostree::{
+    gio::{Cancellable, File},
+    glib::VariantDict,
+    prelude::{Cast, InputStreamExt},
+    MutableTree, Repo,
+};
+
+use crate::{
+    storefront::StorefrontInfo,
+    utils::{app_id_from_ref, mtree_lookup, mtree_lookup_file, Transaction},
+};
+
+#[derive(Args, Debug)]
+pub struct PublishArgs {
+    #[arg(long)]
+    backend_url: String,
+}
+
+impl PublishArgs {
+    pub fn run(&self) -> Result<(), Box<dyn Error>> {
+        // Open the build repo at the current directory
+        let repo = Repo::new(&File::for_path("."));
+        repo.open(Cancellable::NONE)?;
+
+        // List all the app refs
+        let refs = repo.list_refs(Some("app"), Cancellable::NONE)?;
+
+        let mut storefront_infos = HashMap::new();
+
+        // Rewrite each one
+        for (refstring, checksum) in refs.into_iter() {
+            let refstring = format!("app/{}", refstring);
+
+            info!("Rewriting {} ({})", refstring, checksum);
+
+            let app_id = app_id_from_ref(&refstring);
+
+            let storefront_info = StorefrontInfo::fetch(&self.backend_url, &app_id)?;
+            if !storefront_infos.contains_key(&app_id) {
+                storefront_infos.insert(app_id.clone(), storefront_info);
+            }
+            let storefront_info = storefront_infos.get(&app_id).unwrap();
+
+            rewrite_ref(&repo, storefront_info, &refstring, &checksum)?;
+        }
+
+        Ok(())
+    }
+}
+
+fn rewrite_ref(
+    repo: &Repo,
+    storefront_info: &StorefrontInfo,
+    refstring: &str,
+    checksum: &str,
+) -> Result<(), Box<dyn Error>> {
+    let app_id = app_id_from_ref(refstring);
+
+    let tx = Transaction::new(repo)?;
+
+    // Create a MutableTree so we can edit the commit's files
+    let mtree = MutableTree::from_commit(repo, checksum)?;
+
+    rewrite_appstream_file(repo, &mtree, &app_id, storefront_info)?;
+
+    // Write the modified MutableTree to the repository.
+    let repo_file = repo.write_mtree(&mtree, Cancellable::NONE)?;
+
+    // Copy the original commit metadata. Leave out extended attributes, that's just the signature, which
+    // won't be valid when we rewrite the commit (and flat-manager will sign the resulting commit with its own key
+    // anyway)
+    let commit_metadata = repo.load_commit(checksum)?.0;
+    let metadata = commit_metadata.child_get::<VariantDict>(0);
+    let subject = &commit_metadata.child_get::<String>(3);
+    let body = &commit_metadata.child_get::<String>(4);
+    let time = ostree::commit_get_timestamp(&commit_metadata);
+    let parent = ostree::commit_get_parent(&commit_metadata).map(|x| x.to_string());
+
+    rewrite_metadata(&metadata, storefront_info)?;
+
+    // Write a new commit with the new dirtree but (mostly) the same metadata
+    let new_checksum = repo
+        .write_commit_with_time(
+            parent.as_deref(),
+            Some(subject),
+            Some(body),
+            Some(&metadata.end()),
+            repo_file.dynamic_cast_ref().unwrap(),
+            time,
+            Cancellable::NONE,
+        )?
+        .to_string();
+
+    if checksum == new_checksum {
+        info!("No changes to {}", refstring,);
+    } else {
+        info!(
+            "Rewriting ref {} from {} to {}",
+            refstring, checksum, &new_checksum
+        );
+        // Update the ref to point to the edited commit
+        repo.transaction_set_ref(None, refstring, Some(&new_checksum));
+    }
+
+    tx.commit()?;
+
+    Ok(())
+}
+
+pub fn rewrite_appstream_file(
+    repo: &Repo,
+    mtree: &MutableTree,
+    app_id: &str,
+    storefront_info: &StorefrontInfo,
+) -> Result<(), Box<dyn Error>> {
+    let appstream_filename = &format!("{}.xml.gz", app_id);
+    let appstream_file = mtree_lookup_file(
+        mtree,
+        &[
+            "files",
+            "share",
+            "app-info",
+            "xmls",
+            appstream_filename,
+        ],
+    ).map_err(|e| format!("Failed to apply storefront info: Could not find the appstream file in the uploaded commit: {}",e))?;
+
+    let (appstream_file, fileinfo, _) = repo.load_file(&appstream_file, Cancellable::NONE)?;
+
+    let appstream_content = appstream_file
+        .unwrap()
+        .read_bytes(fileinfo.size().try_into().unwrap(), Cancellable::NONE)?;
+
+    let mut s = String::new();
+    GzDecoder::new(&*appstream_content).read_to_string(&mut s)?;
+
+    let new_appstream = rewrite_appstream_xml(storefront_info, &s)?;
+
+    if new_appstream == s {
+        // If the appstream contents didn't change, we shouldn't bother rewriting the file
+        return Ok(());
+    } else {
+        let difference = diff::lines(&s, &new_appstream)
+            .iter()
+            .map(|l| match l {
+                diff::Result::Left(l) => format!("-{}\n", l),
+                diff::Result::Both(b, _) => format!(" {}\n", b),
+                diff::Result::Right(r) => format!("+{}\n", r),
+            })
+            .collect::<String>();
+        info!("Changes to {}: {}", appstream_filename, difference);
+    }
+
+    // gzip encode the new appstream file
+    let mut s = vec![];
+    GzEncoder::new(&mut s, Compression::default()).write_all(new_appstream.as_bytes())?;
+
+    // Write the new appstream file to the repo
+    let checksum = repo.write_regfile_inline(None, 0, 0, 0o100644, None, &s, Cancellable::NONE)?;
+
+    // Edit the MutableTree with a reference to the new appstream file
+    mtree_lookup(mtree, &["files", "share", "app-info", "xmls"])?
+        .1
+        .ok_or("file not found")?
+        .replace_file(&format!("{}.xml.gz", app_id), &checksum)?;
+
+    Ok(())
+}
+
+pub fn rewrite_appstream_xml(
+    storefront_info: &StorefrontInfo,
+    original_appstream: &str,
+) -> Result<String, Box<dyn Error>> {
+    let mut changed = false;
+
+    let mut root = Element::from_reader(original_appstream.as_bytes())?;
+
+    let mut components: Vec<_> = root.children_mut().collect();
+    if components.len() != 1 {
+        return Err(format!(
+            "Expected exactly 1 <component> tag, found {}",
+            components.len()
+        )
+        .into());
+    }
+
+    let component = &mut components[0];
+
+    // Delete all existing "flathub::" keys
+    for custom_tag in component.find_all_mut("custom") {
+        custom_tag.retain_children(|value: &Element| {
+            if let Some(key) = value.get_attr("key") {
+                if key.to_lowercase().starts_with("flathub::") {
+                    changed = true;
+                    false
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        });
+    }
+
+    fn find_element<'a>(
+        parent: &'a mut Element,
+        tag: &'a str,
+        attr: Option<(&'_ str, &'_ str)>,
+    ) -> Option<&'a mut Element> {
+        let existing = if let Some((key, val)) = attr {
+            parent
+                .find_all_mut(tag)
+                .find(|el| el.get_attr(key) == Some(val))
+        } else {
+            parent.find_mut(tag)
+        };
+
+        existing
+    }
+
+    fn find_or_create_element<'a>(
+        parent: &'a mut Element,
+        tag: &'a str,
+        attr: Option<(&'_ str, &'_ str)>,
+    ) -> &'a mut Element {
+        if find_element(parent, tag, attr).is_some() {
+            // running find_element twice is a borrow checker workaround
+            find_element(parent, tag, attr).unwrap()
+        } else {
+            let new_tag = parent.append_new_child(tag);
+            new_tag.set_tail("\n  ");
+            if let Some((key, val)) = attr {
+                new_tag.set_attr(key, val);
+            }
+            new_tag
+        }
+    }
+
+    let mut set_value = |key: &str, value: Option<&str>| {
+        if let Some(value) = value {
+            let custom = find_or_create_element(component, "custom", None);
+            find_or_create_element(custom, "value", Some(("key", key))).set_text(value);
+            changed = true;
+        }
+    };
+
+    // Add verification tags
+    if let Some(verification) = &storefront_info.verification {
+        set_value(
+            "flathub::verification::verified",
+            Some(if verification.verified {
+                "true"
+            } else {
+                "false"
+            }),
+        );
+
+        set_value(
+            "flathub::verification::method",
+            verification.method.as_deref(),
+        );
+        set_value(
+            "flathub::verification::login_name",
+            verification.login_name.as_deref(),
+        );
+        set_value(
+            "flathub::verification::login_provider",
+            verification.login_provider.as_deref(),
+        );
+        set_value(
+            "flathub::verification::website",
+            verification.website.as_deref(),
+        );
+    }
+
+    // Add pricing tags
+    if let Some(pricing) = &storefront_info.pricing {
+        set_value(
+            "flathub::pricing::recommended_donation",
+            pricing
+                .recommended_donation
+                .map(|x| x.to_string())
+                .as_deref(),
+        );
+        set_value(
+            "flathub::pricing::minimum_payment",
+            pricing.minimum_payment.map(|x| x.to_string()).as_deref(),
+        );
+    }
+
+    if changed {
+        Ok(root.to_string()?)
+    } else {
+        Ok(original_appstream.to_string())
+    }
+}
+
+/// Edits a commit's metadata according to the given storefront info.
+pub fn rewrite_metadata(
+    metadata: &VariantDict,
+    storefront_info: &StorefrontInfo,
+) -> Result<(), Box<dyn Error>> {
+    let subsets = list_subsets(storefront_info);
+
+    if subsets.is_empty() {
+        metadata.remove("xa.subsets");
+    } else {
+        info!("Setting subsets: {}", subsets.join(", "));
+        metadata.insert("xa.subsets", &subsets);
+    }
+
+    let is_paid = storefront_info
+        .pricing
+        .as_ref()
+        .map(|pricing| {
+            pricing.recommended_donation.is_some_and(|x| x > 0)
+                || pricing.minimum_payment.is_some_and(|x| x > 0)
+        })
+        .unwrap_or(false);
+
+    if is_paid {
+        info!("Setting token type to 1");
+        metadata.insert("xa.token-type", &1_i32.to_le());
+    } else {
+        metadata.remove("xa.token-type");
+    }
+
+    Ok(())
+}
+
+/// Lists all the subsets that we should add to a commit, based on the given storefront info.
+fn list_subsets(storefront_info: &StorefrontInfo) -> Vec<String> {
+    let mut subsets = vec![];
+
+    if storefront_info
+        .verification
+        .as_ref()
+        .is_some_and(|x| x.verified)
+    {
+        subsets.push("verified".to_string());
+    }
+
+    if storefront_info.is_free_software.is_some_and(|x| x) {
+        subsets.push("freesoftware".to_string());
+    }
+
+    subsets
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::storefront::{PricingInfo, VerificationInfo};
+
+    use super::*;
+
+    fn assert_eq_ignore_space(a: &str, b: &str) {
+        assert_eq!(a.replace([' ', '\n'], ""), b.replace([' ', '\n'], ""))
+    }
+
+    #[test]
+    fn test_list_subsets_1() {
+        let storefront_info = StorefrontInfo {
+            verification: Some(VerificationInfo {
+                verified: true,
+                ..Default::default()
+            }),
+            pricing: None,
+            is_free_software: Some(true),
+        };
+        let subsets = list_subsets(&storefront_info);
+
+        assert_eq!(vec!["verified", "freesoftware"], subsets);
+    }
+
+    #[test]
+    fn test_list_subsets_2() {
+        let storefront_info = StorefrontInfo {
+            verification: None,
+            pricing: None,
+            is_free_software: None,
+        };
+        let subsets = list_subsets(&storefront_info);
+
+        assert!(subsets.is_empty());
+    }
+
+    #[test]
+    fn test_rewrite_appstream_xml_1() {
+        let original_appstream = r#"<?xml version="1.0" encoding="utf-8"?>
+<components>
+    <component>
+        <id>org.flatpak.Test</id>
+    </component>
+</components>"#;
+
+        let storefront_info = StorefrontInfo {
+            verification: Some(VerificationInfo {
+                verified: true,
+                method: Some("website".to_string()),
+                website: Some("example.com".to_string()),
+                ..Default::default()
+            }),
+            pricing: None,
+            is_free_software: None,
+        };
+
+        let result = rewrite_appstream_xml(&storefront_info, original_appstream).unwrap();
+
+        assert_eq_ignore_space(
+            &result,
+            r#"<?xml version="1.0" encoding="utf-8"?><components>
+<component>
+    <id>org.flatpak.Test</id>
+    <custom>
+        <value key="flathub::verification::verified">true</value>
+        <value key="flathub::verification::method">website</value>
+        <value key="flathub::verification::website">example.com</value>
+    </custom>
+</component>
+</components>"#,
+        )
+    }
+
+    #[test]
+    fn test_rewrite_appstream_xml_2() {
+        let original_appstream = r#"<?xml version="1.0" encoding="utf-8"?>
+<components>
+    <component>
+        <id>org.flatpak.Test</id>
+    </component>
+</components>"#;
+
+        let storefront_info = StorefrontInfo {
+            verification: None,
+            pricing: Some(PricingInfo {
+                minimum_payment: None,
+                recommended_donation: Some(1),
+            }),
+            is_free_software: None,
+        };
+
+        let result = rewrite_appstream_xml(&storefront_info, original_appstream).unwrap();
+
+        assert_eq_ignore_space(
+            &result,
+            r#"<?xml version="1.0" encoding="utf-8"?><components>
+<component>
+    <id>org.flatpak.Test</id>
+    <custom>
+        <value key="flathub::pricing::recommended_donation">1</value>
+    </custom>
+</component>
+</components>"#,
+        )
+    }
+
+    #[test]
+    fn test_rewrite_appstream_xml_removes_old_tags() {
+        let original_appstream = r#"<?xml version="1.0" encoding="utf-8"?>
+<components>
+    <component>
+        <id>org.flatpak.Test</id>
+        <custom>
+            <value key="flathub::pricing::recommended_donation">1</value>
+        </custom>
+    </component>
+</components>"#;
+
+        let storefront_info = StorefrontInfo {
+            verification: None,
+            pricing: Some(PricingInfo {
+                minimum_payment: Some(2),
+                recommended_donation: None,
+            }),
+            is_free_software: None,
+        };
+
+        let result = rewrite_appstream_xml(&storefront_info, original_appstream).unwrap();
+
+        assert_eq_ignore_space(
+            &result,
+            r#"<?xml version="1.0" encoding="utf-8"?><components>
+<component>
+    <id>org.flatpak.Test</id>
+    <custom>
+        <value key="flathub::pricing::minimum_payment">2</value>
+    </custom>
+</component>
+</components>"#,
+        )
+    }
+}
