@@ -39,9 +39,9 @@ impl PublishArgs {
 
         // Rewrite each one
         for (refstring, checksum) in refs.into_iter() {
-            let refstring = format!("app/{}", refstring);
+            let refstring = format!("app/{refstring}");
 
-            info!("Rewriting {} ({})", refstring, checksum);
+            info!("Rewriting {refstring} ({checksum})");
 
             let app_id = app_id_from_ref(&refstring);
 
@@ -102,12 +102,9 @@ fn rewrite_ref(
         .to_string();
 
     if checksum == new_checksum {
-        info!("No changes to {}", refstring,);
+        info!("No changes to {refstring}");
     } else {
-        info!(
-            "Rewriting ref {} from {} to {}",
-            refstring, checksum, &new_checksum
-        );
+        info!("Rewriting ref {refstring} from {checksum} to {new_checksum}");
         // Update the ref to point to the edited commit
         repo.transaction_set_ref(None, refstring, Some(&new_checksum));
     }
@@ -123,7 +120,7 @@ pub fn rewrite_appstream_file(
     app_id: &str,
     storefront_info: &StorefrontInfo,
 ) -> Result<(), Box<dyn Error>> {
-    let appstream_filename = &format!("{}.xml.gz", app_id);
+    let appstream_filename = &format!("{app_id}.xml.gz");
     let appstream_file = mtree_lookup_file(
         mtree,
         &[
@@ -133,7 +130,7 @@ pub fn rewrite_appstream_file(
             "xmls",
             appstream_filename,
         ],
-    ).map_err(|e| format!("Failed to apply storefront info: Could not find the appstream file in the uploaded commit: {}",e))?;
+    ).map_err(|e| format!("Failed to apply storefront info: Could not find the appstream file in the uploaded commit: {e}"))?;
 
     let (appstream_file, fileinfo, _) = repo.load_file(&appstream_file, Cancellable::NONE)?;
 
@@ -153,9 +150,9 @@ pub fn rewrite_appstream_file(
         let difference = diff::lines(&s, &new_appstream)
             .iter()
             .map(|l| match l {
-                diff::Result::Left(l) => format!("-{}\n", l),
-                diff::Result::Both(b, _) => format!(" {}\n", b),
-                diff::Result::Right(r) => format!("+{}\n", r),
+                diff::Result::Left(l) => format!("-{l}\n"),
+                diff::Result::Both(b, _) => format!(" {b}\n"),
+                diff::Result::Right(r) => format!("+{r}\n"),
             })
             .collect::<String>();
         info!("Changes to {}: {}", appstream_filename, difference);
@@ -172,7 +169,7 @@ pub fn rewrite_appstream_file(
     mtree_lookup(mtree, &["files", "share", "app-info", "xmls"])?
         .1
         .ok_or("file not found")?
-        .replace_file(&format!("{}.xml.gz", app_id), &checksum)?;
+        .replace_file(&format!("{app_id}.xml.gz"), &checksum)?;
 
     Ok(())
 }
