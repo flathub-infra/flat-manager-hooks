@@ -16,18 +16,16 @@ use ostree::{
 };
 
 use crate::{
+    config::Config,
     storefront::StorefrontInfo,
     utils::{app_id_from_ref, mtree_lookup, mtree_lookup_file, Transaction},
 };
 
 #[derive(Args, Debug)]
-pub struct PublishArgs {
-    #[arg(long)]
-    backend_url: String,
-}
+pub struct PublishArgs {}
 
 impl PublishArgs {
-    pub fn run(&self) -> Result<(), Box<dyn Error>> {
+    pub fn run(&self, config: &Config) -> Result<(), Box<dyn Error>> {
         // Open the build repo at the current directory
         let repo = Repo::new(&File::for_path("."));
         repo.open(Cancellable::NONE)?;
@@ -45,7 +43,7 @@ impl PublishArgs {
 
             let app_id = app_id_from_ref(&refstring);
 
-            let storefront_info = StorefrontInfo::fetch(&self.backend_url, &app_id)?;
+            let storefront_info = StorefrontInfo::fetch(&config.backend_url, &app_id)?;
             if !storefront_infos.contains_key(&app_id) {
                 storefront_infos.insert(app_id.clone(), storefront_info);
             }

@@ -1,0 +1,5 @@
+{
+    "backend_url": "http://localhost:8000",
+    "flat_manager_url": "http://localhost:8080",
+    "flat_manager_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJidWlsZCIsInNjb3BlIjpbInJldmlld2NoZWNrIl0sIm5hbWUiOiJkZWZhdWx0IiwicHJlZml4ZXMiOltdLCJyZXBvcyI6W10sImV4cCI6OTcwNDMyMzQ5OH0.NlGRcgycAqE7_BaHdZz5v7cSedZOqB8V8oO3cG3chNI"
+}
