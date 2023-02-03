@@ -225,7 +225,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "flathub-ci"
+name = "flathub-hooks"
 version = "0.1.0"
 dependencies = [
  "clap",
