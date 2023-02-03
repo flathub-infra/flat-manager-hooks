@@ -156,8 +156,9 @@ checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
 
 [[package]]
 name = "elementtree"
-version = "1.2.2"
-source = "git+https://github.com/jameswestman/elementtree-rust?branch=retain-children#c16d0b6642182b6fbcd11f6d26c2b016b40a901a"
+version = "1.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3efd4742acf458718a6456e0adf0b4d734d6b783e452bbf1ac36bf31f4085cb3"
 dependencies = [
  "string_cache",
 ]

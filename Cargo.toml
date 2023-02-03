@@ -6,8 +6,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.0.29", features = ["derive"] }
 diff = "0.1.13"
-# see https://github.com/mitsuhiko/elementtree-rust/pull/19
-elementtree = { git = "https://github.com/jameswestman/elementtree-rust", version = "1.2.2", branch = "retain-children" }
+elementtree = "1.2.3"
 env_logger = "0.10.0"
 flate2 = "1.0.25"
 log = "0.4.17"
