@@ -1,5 +1,3 @@
-#![feature(is_some_and)]
-
 mod cmd_publish;
 mod cmd_review;
 mod config;

@@ -318,8 +318,8 @@ pub fn rewrite_metadata(
         .pricing
         .as_ref()
         .map(|pricing| {
-            pricing.recommended_donation.is_some_and(|x| x > 0)
-                || pricing.minimum_payment.is_some_and(|x| x > 0)
+            pricing.recommended_donation.map_or(false, |x| x > 0)
+                || pricing.minimum_payment.map_or(false, |x| x > 0)
         })
         .unwrap_or(false);
 
@@ -340,12 +340,12 @@ fn list_subsets(storefront_info: &StorefrontInfo) -> Vec<String> {
     if storefront_info
         .verification
         .as_ref()
-        .is_some_and(|x| x.verified)
+        .map_or(false, |x| x.verified)
     {
         subsets.push("verified".to_string());
     }
 
-    if storefront_info.is_free_software.is_some_and(|x| x) {
+    if storefront_info.is_free_software.map_or(false, |x| x) {
         subsets.push("freesoftware".to_string());
     }
 
@@ -382,7 +382,7 @@ mod tests {
         let storefront_info = StorefrontInfo {
             verification: None,
             pricing: None,
-            is_free_software: None,
+            is_free_software: Some(false),
         };
         let subsets = list_subsets(&storefront_info);
 
