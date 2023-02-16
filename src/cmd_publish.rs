@@ -337,16 +337,21 @@ pub fn rewrite_metadata(
 fn list_subsets(storefront_info: &StorefrontInfo) -> Vec<String> {
     let mut subsets = vec![];
 
-    if storefront_info
+    let verified = storefront_info
         .verification
         .as_ref()
-        .map_or(false, |x| x.verified)
-    {
+        .map_or(false, |x| x.verified);
+
+    let floss = storefront_info.is_free_software.map_or(false, |x| x);
+
+    if verified {
         subsets.push("verified".to_string());
     }
-
-    if storefront_info.is_free_software.map_or(false, |x| x) {
-        subsets.push("freesoftware".to_string());
+    if floss {
+        subsets.push("floss".to_string());
+    }
+    if verified && floss {
+        subsets.push("verified_floss".to_string());
     }
 
     subsets
@@ -374,7 +379,7 @@ mod tests {
         };
         let subsets = list_subsets(&storefront_info);
 
-        assert_eq!(vec!["verified", "freesoftware"], subsets);
+        assert_eq!(vec!["verified", "floss", "verified_floss"], subsets);
     }
 
     #[test]

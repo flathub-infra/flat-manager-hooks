@@ -3,7 +3,7 @@ use std::error::Error;
 use serde::Deserialize;
 
 #[derive(Debug, Default, Deserialize)]
-#[serde(default, rename_all = "kebab-case")]
+#[serde(default)]
 pub struct StorefrontInfo {
     pub verification: Option<VerificationInfo>,
     pub pricing: Option<PricingInfo>,
