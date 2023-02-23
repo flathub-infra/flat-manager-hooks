@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use log::info;
 use serde::Deserialize;
 
 #[derive(Debug, Default, Deserialize)]
@@ -32,14 +33,22 @@ impl StorefrontInfo {
         let convert_err = |e| format!("Failed to fetch storefront info from {}: {}", &endpoint, e);
 
         // Fetch the storefront info
-        let storefront_info = reqwest::blocking::Client::new()
+        let response = reqwest::blocking::Client::new()
             .get(&endpoint)
             .query(&[("app_id", app_id)])
             .send()
-            .map_err(convert_err)?
-            .error_for_status()?
-            .json::<StorefrontInfo>()
             .map_err(convert_err)?;
+
+        let storefront_info = if response.status() == 404 {
+            info!("storefront-info endpoint returned 404; this must be a new app");
+            Default::default()
+        } else {
+            response
+                .error_for_status()
+                .map_err(convert_err)?
+                .json::<StorefrontInfo>()
+                .map_err(convert_err)?
+        };
 
         Ok(storefront_info)
     }
