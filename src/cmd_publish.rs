@@ -30,14 +30,13 @@ impl PublishArgs {
         let repo = Repo::new(&File::for_path("."));
         repo.open(Cancellable::NONE)?;
 
-        // List all the app refs
-        let refs = repo.list_refs(Some("app"), Cancellable::NONE)?;
+        let refs = repo.list_refs(None, Cancellable::NONE)?;
 
         let mut storefront_infos = HashMap::new();
 
         // Rewrite each one
         for (refstring, checksum) in refs.into_iter() {
-            let refstring = format!("app/{refstring}");
+            let refstring = format!("{refstring}");
 
             info!("Rewriting {refstring} ({checksum})");
 
