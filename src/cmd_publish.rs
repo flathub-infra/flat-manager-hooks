@@ -127,10 +127,14 @@ pub fn rewrite_appstream_file(
             "app-info",
             "xmls",
             appstream_filename,
-        ],
-    ).map_err(|e| format!("Failed to apply storefront info: Could not find the appstream file in the uploaded commit: {e}"))?;
+        ]
+    );
 
-    let (appstream_file, fileinfo, _) = repo.load_file(&appstream_file, Cancellable::NONE)?;
+    if appstream_file.is_err() {
+        return Ok(());
+    }
+
+    let (appstream_file, fileinfo, _) = repo.load_file(&appstream_file.unwrap(), Cancellable::NONE)?;
 
     let appstream_content = appstream_file
         .unwrap()
