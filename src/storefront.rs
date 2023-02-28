@@ -14,6 +14,7 @@ pub struct StorefrontInfo {
 #[derive(Debug, Default, Deserialize)]
 pub struct VerificationInfo {
     pub verified: bool,
+    pub timestamp: Option<String>,
     pub method: Option<String>,
     pub website: Option<String>,
     pub login_provider: Option<String>,

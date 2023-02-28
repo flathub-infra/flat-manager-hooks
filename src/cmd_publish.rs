@@ -120,20 +120,15 @@ pub fn rewrite_appstream_file(
     let appstream_filename = &format!("{app_id}.xml.gz");
     let appstream_file = mtree_lookup_file(
         mtree,
-        &[
-            "files",
-            "share",
-            "app-info",
-            "xmls",
-            appstream_filename,
-        ]
+        &["files", "share", "app-info", "xmls", appstream_filename],
     );
 
     if appstream_file.is_err() {
         return Ok(());
     }
 
-    let (appstream_file, fileinfo, _) = repo.load_file(&appstream_file.unwrap(), Cancellable::NONE)?;
+    let (appstream_file, fileinfo, _) =
+        repo.load_file(&appstream_file.unwrap(), Cancellable::NONE)?;
 
     let appstream_content = appstream_file
         .unwrap()
@@ -263,6 +258,10 @@ pub fn rewrite_appstream_xml(
             }),
         );
 
+        set_value(
+            "flathub::verification::timestamp",
+            verification.timestamp.as_deref(),
+        );
         set_value(
             "flathub::verification::method",
             verification.method.as_deref(),
@@ -409,6 +408,7 @@ mod tests {
         let storefront_info = StorefrontInfo {
             verification: Some(VerificationInfo {
                 verified: true,
+                timestamp: Some("2023-01-01T00:00:00".to_string()),
                 method: Some("website".to_string()),
                 website: Some("example.com".to_string()),
                 ..Default::default()
@@ -426,6 +426,7 @@ mod tests {
     <id>org.flatpak.Test</id>
     <custom>
         <value key="flathub::verification::verified">true</value>
+        <value key="flathub::verification::timestamp">2023-01-01T00:00:00</value>
         <value key="flathub::verification::method">website</value>
         <value key="flathub::verification::website">example.com</value>
     </custom>
