@@ -36,7 +36,7 @@ impl PublishArgs {
 
         // Rewrite each one
         for (refstring, checksum) in refs.into_iter() {
-            let refstring = format!("{refstring}");
+            let refstring = refstring.to_string();
 
             info!("Rewriting {refstring} ({checksum})");
 
