@@ -36,7 +36,7 @@ impl PublishArgs {
 
         // Rewrite each one
         for (refstring, checksum) in refs.into_iter() {
-            let refstring = format!("{refstring}");
+            let refstring = refstring.to_string();
 
             info!("Rewriting {refstring} ({checksum})");
 
@@ -120,20 +120,15 @@ pub fn rewrite_appstream_file(
     let appstream_filename = &format!("{app_id}.xml.gz");
     let appstream_file = mtree_lookup_file(
         mtree,
-        &[
-            "files",
-            "share",
-            "app-info",
-            "xmls",
-            appstream_filename,
-        ]
+        &["files", "share", "app-info", "xmls", appstream_filename],
     );
 
     if appstream_file.is_err() {
         return Ok(());
     }
 
-    let (appstream_file, fileinfo, _) = repo.load_file(&appstream_file.unwrap(), Cancellable::NONE)?;
+    let (appstream_file, fileinfo, _) =
+        repo.load_file(&appstream_file.unwrap(), Cancellable::NONE)?;
 
     let appstream_content = appstream_file
         .unwrap()

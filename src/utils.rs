@@ -6,11 +6,14 @@ pub fn app_id_from_ref(refstring: &str) -> String {
     let ref_id = refstring.split('/').nth(1).unwrap().to_string();
     let id_parts: Vec<&str> = ref_id.split('.').collect();
 
-    if id_parts.last() == Some(&"Sources") || id_parts.last() == Some(&"Debug") || id_parts.last() == Some(&"Locale") {
-        return id_parts[..id_parts.len() - 1].to_vec().join(".")
+    if id_parts.last() == Some(&"Sources")
+        || id_parts.last() == Some(&"Debug")
+        || id_parts.last() == Some(&"Locale")
+    {
+        id_parts[..id_parts.len() - 1].to_vec().join(".")
     } else {
-        return ref_id
-    };
+        ref_id
+    }
 }
 
 pub fn mtree_lookup(
