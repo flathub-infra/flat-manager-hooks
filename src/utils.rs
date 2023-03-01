@@ -6,10 +6,7 @@ pub fn app_id_from_ref(refstring: &str) -> String {
     let ref_id = refstring.split('/').nth(1).unwrap().to_string();
     let id_parts: Vec<&str> = ref_id.split('.').collect();
 
-    if id_parts.last() == Some(&"Sources")
-        || id_parts.last() == Some(&"Debug")
-        || id_parts.last() == Some(&"Locale")
-    {
+    if ["Sources", "Debug", "Locale"].contains(id_parts.last().unwrap()) {
         id_parts[..id_parts.len() - 1].to_vec().join(".")
     } else {
         ref_id
