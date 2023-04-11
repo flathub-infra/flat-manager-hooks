@@ -278,6 +278,15 @@ pub fn rewrite_appstream_xml(
             "flathub::verification::website",
             verification.website.as_deref(),
         );
+        set_value(
+            "flathub::verification::login_is_organization",
+            Some(if verification.login_is_organization.is_some() {
+                "true"
+            } else {
+                "false"
+            }),
+        );
+
     }
 
     // Add pricing tags
