@@ -286,7 +286,6 @@ pub fn rewrite_appstream_xml(
                 "false"
             }),
         );
-
     }
 
     // Add pricing tags
