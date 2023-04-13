@@ -19,6 +19,7 @@ pub struct VerificationInfo {
     pub website: Option<String>,
     pub login_provider: Option<String>,
     pub login_name: Option<String>,
+    pub login_is_organization: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
