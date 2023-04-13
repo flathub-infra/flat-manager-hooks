@@ -278,6 +278,14 @@ pub fn rewrite_appstream_xml(
             "flathub::verification::website",
             verification.website.as_deref(),
         );
+        set_value(
+            "flathub::verification::login_is_organization",
+            Some(if verification.login_is_organization.is_some() {
+                "true"
+            } else {
+                "false"
+            }),
+        );
     }
 
     // Add pricing tags
@@ -429,6 +437,7 @@ mod tests {
         <value key="flathub::verification::timestamp">2023-01-01T00:00:00</value>
         <value key="flathub::verification::method">website</value>
         <value key="flathub::verification::website">example.com</value>
+        <value key="flathub::verification::login_is_organization">false</value>
     </custom>
 </component>
 </components>"#,
