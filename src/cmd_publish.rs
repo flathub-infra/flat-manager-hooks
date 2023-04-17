@@ -440,7 +440,7 @@ mod tests {
         <value key="flathub::verification::method">website</value>
         <value key="flathub::verification::website">example.com</value>
         <value key="flathub::verification::login_is_organization">false</value>
-    </<metadata>
+    </metadata>
 </component>
 </components>"#,
         )
@@ -473,7 +473,7 @@ mod tests {
     <id>org.flatpak.Test</id>
     <metadata>
         <value key="flathub::pricing::recommended_donation">1</value>
-    </<metadata>
+    </metadata>
 </component>
 </components>"#,
         )
@@ -487,7 +487,7 @@ mod tests {
         <id>org.flatpak.Test</id>
         <metadata>
             <value key="flathub::pricing::recommended_donation">1</value>
-        </<metadata>
+        </metadata>
     </component>
 </components>"#;
 
@@ -509,7 +509,7 @@ mod tests {
     <id>org.flatpak.Test</id>
     <metadata>
         <value key="flathub::pricing::minimum_payment">2</value>
-    </<metadata>
+    </metadata>
 </component>
 </components>"#,
         )
