@@ -434,13 +434,13 @@ mod tests {
             r#"<?xml version="1.0" encoding="utf-8"?><components>
 <component>
     <id>org.flatpak.Test</id>
-    <custom>
+    <<metadata>
         <value key="flathub::verification::verified">true</value>
         <value key="flathub::verification::timestamp">2023-01-01T00:00:00</value>
         <value key="flathub::verification::method">website</value>
         <value key="flathub::verification::website">example.com</value>
         <value key="flathub::verification::login_is_organization">false</value>
-    </custom>
+    </<metadata>
 </component>
 </components>"#,
         )
@@ -471,9 +471,9 @@ mod tests {
             r#"<?xml version="1.0" encoding="utf-8"?><components>
 <component>
     <id>org.flatpak.Test</id>
-    <custom>
+    <<metadata>
         <value key="flathub::pricing::recommended_donation">1</value>
-    </custom>
+    </<metadata>
 </component>
 </components>"#,
         )
@@ -485,9 +485,9 @@ mod tests {
 <components>
     <component>
         <id>org.flatpak.Test</id>
-        <custom>
+        <<metadata>
             <value key="flathub::pricing::recommended_donation">1</value>
-        </custom>
+        </<metadata>
     </component>
 </components>"#;
 
@@ -507,9 +507,9 @@ mod tests {
             r#"<?xml version="1.0" encoding="utf-8"?><components>
 <component>
     <id>org.flatpak.Test</id>
-    <custom>
+    <<metadata>
         <value key="flathub::pricing::minimum_payment">2</value>
-    </custom>
+    </<metadata>
 </component>
 </components>"#,
         )
