@@ -190,10 +190,12 @@ pub fn rewrite_appstream_xml(
     let component = &mut components[0];
 
     // Delete all existing "flathub::" keys
-    for custom_tag in component.find_all_mut("custom") {
-        custom_tag.retain_children(|value: &Element| {
+    for metadata_tag in component.find_all_mut("metadata") {
+        metadata_tag.retain_children(|value: &Element| {
             if let Some(key) = value.get_attr("key") {
-                if key.to_lowercase().starts_with("flathub::") {
+                if key.to_lowercase().starts_with("flathub::verification")
+                    || key.to_lowercase().starts_with("flathub::pricing")
+                {
                     changed = true;
                     false
                 } else {
