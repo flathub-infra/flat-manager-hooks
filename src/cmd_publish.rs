@@ -190,10 +190,12 @@ pub fn rewrite_appstream_xml(
     let component = &mut components[0];
 
     // Delete all existing "flathub::" keys
-    for custom_tag in component.find_all_mut("custom") {
-        custom_tag.retain_children(|value: &Element| {
+    for metadata_tag in component.find_all_mut("metadata") {
+        metadata_tag.retain_children(|value: &Element| {
             if let Some(key) = value.get_attr("key") {
-                if key.to_lowercase().starts_with("flathub::") {
+                if key.to_lowercase().starts_with("flathub::verification")
+                    || key.to_lowercase().starts_with("flathub::pricing")
+                {
                     changed = true;
                     false
                 } else {
@@ -241,8 +243,8 @@ pub fn rewrite_appstream_xml(
 
     let mut set_value = |key: &str, value: Option<&str>| {
         if let Some(value) = value {
-            let custom = find_or_create_element(component, "custom", None);
-            find_or_create_element(custom, "value", Some(("key", key))).set_text(value);
+            let metadata = find_or_create_element(component, "metadata", None);
+            find_or_create_element(metadata, "value", Some(("key", key))).set_text(value);
             changed = true;
         }
     };
@@ -432,13 +434,13 @@ mod tests {
             r#"<?xml version="1.0" encoding="utf-8"?><components>
 <component>
     <id>org.flatpak.Test</id>
-    <custom>
+    <metadata>
         <value key="flathub::verification::verified">true</value>
         <value key="flathub::verification::timestamp">2023-01-01T00:00:00</value>
         <value key="flathub::verification::method">website</value>
         <value key="flathub::verification::website">example.com</value>
         <value key="flathub::verification::login_is_organization">false</value>
-    </custom>
+    </metadata>
 </component>
 </components>"#,
         )
@@ -469,9 +471,9 @@ mod tests {
             r#"<?xml version="1.0" encoding="utf-8"?><components>
 <component>
     <id>org.flatpak.Test</id>
-    <custom>
+    <metadata>
         <value key="flathub::pricing::recommended_donation">1</value>
-    </custom>
+    </metadata>
 </component>
 </components>"#,
         )
@@ -483,9 +485,9 @@ mod tests {
 <components>
     <component>
         <id>org.flatpak.Test</id>
-        <custom>
+        <metadata>
             <value key="flathub::pricing::recommended_donation">1</value>
-        </custom>
+        </metadata>
     </component>
 </components>"#;
 
@@ -505,9 +507,9 @@ mod tests {
             r#"<?xml version="1.0" encoding="utf-8"?><components>
 <component>
     <id>org.flatpak.Test</id>
-    <custom>
+    <metadata>
         <value key="flathub::pricing::minimum_payment">2</value>
-    </custom>
+    </metadata>
 </component>
 </components>"#,
         )
