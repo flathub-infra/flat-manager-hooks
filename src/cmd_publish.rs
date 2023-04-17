@@ -243,8 +243,8 @@ pub fn rewrite_appstream_xml(
 
     let mut set_value = |key: &str, value: Option<&str>| {
         if let Some(value) = value {
-            let custom = find_or_create_element(component, "custom", None);
-            find_or_create_element(custom, "value", Some(("key", key))).set_text(value);
+            let metadata = find_or_create_element(component, "metadata", None);
+            find_or_create_element(metadata, "value", Some(("key", key))).set_text(value);
             changed = true;
         }
     };
