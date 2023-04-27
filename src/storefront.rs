@@ -29,7 +29,7 @@ pub struct PricingInfo {
 }
 
 impl StorefrontInfo {
-    fn fetch_once(backend_url: &str, app_id: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn fetch(backend_url: &str, app_id: &str) -> Result<Self, Box<dyn Error>> {
         let endpoint = format!("{backend_url}/purchases/storefront-info");
 
         let convert_err = |e| format!("Failed to fetch storefront info from {}: {}", &endpoint, e);
@@ -53,27 +53,5 @@ impl StorefrontInfo {
         };
 
         Ok(storefront_info)
-    }
-
-    pub fn fetch(backend_url: &str, app_id: &str) -> Result<Self, Box<dyn Error>> {
-        let mut i = 0;
-
-        const RETRY_COUNT: i32 = 15;
-        const WAIT_TIME: u64 = 1;
-
-        loop {
-            match Self::fetch_once(backend_url, app_id) {
-                Ok(info) => return Ok(info),
-                Err(e) => {
-                    info!("{}", e);
-                    i += 1;
-                    if i > RETRY_COUNT {
-                        return Err(e);
-                    }
-                    info!("Retrying ({i}/{RETRY_COUNT}) in {WAIT_TIME} seconds...");
-                    std::thread::sleep(std::time::Duration::from_secs(WAIT_TIME));
-                }
-            }
-        }
     }
 }
