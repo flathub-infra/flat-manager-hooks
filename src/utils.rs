@@ -3,6 +3,18 @@ use std::error::Error;
 use log::info;
 use ostree::{gio::Cancellable, glib, glib::GString, MutableTree, Repo};
 
+pub fn get_job_id() -> Result<i64, Box<dyn Error>> {
+    Ok(std::env::var("FLAT_MANAGER_JOB_ID")?.parse()?)
+}
+
+pub fn get_build_id() -> Result<i64, Box<dyn Error>> {
+    Ok(std::env::var("FLAT_MANAGER_BUILD_ID")?.parse()?)
+}
+
+pub fn arch_from_ref(refstring: &str) -> String {
+    refstring.split('/').nth(2).unwrap().to_string()
+}
+
 pub fn app_id_from_ref(refstring: &str) -> String {
     let ref_id = refstring.split('/').nth(1).unwrap().to_string();
     let id_parts: Vec<&str> = ref_id.split('.').collect();

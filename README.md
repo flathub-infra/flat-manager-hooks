@@ -12,3 +12,8 @@ All of the hooks are built as the same Rust binary and called using subcommands.
 
 This hook is run *during* the publish job. It fetches information about the app from the backend and edits the
 build's commits to match. It updates appstream data, commit subsets, and token type.
+
+## flathub-hooks review
+
+This is the hook for reviewing a build. It checks with the backend for changes in appstream metadata and requests
+a moderator review if necessary. In the future, it will also run the validation scripts and report any errors.
