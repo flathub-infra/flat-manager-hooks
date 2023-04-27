@@ -3,6 +3,8 @@ use ostree::{
     gio::Cancellable, glib, glib::GString, prelude::InputStreamExtManual, MutableTree, Repo,
 };
 
+use log::info;
+
 pub fn app_id_from_ref(refstring: &str) -> String {
     let ref_id = refstring.split('/').nth(1).unwrap().to_string();
     let id_parts: Vec<&str> = ref_id.split('.').collect();
@@ -74,6 +76,30 @@ impl Drop for Transaction<'_> {
             self.repo
                 .abort_transaction(Cancellable::NONE)
                 .expect("Aborting the transaction should not fail");
+        }
+    }
+}
+
+/// Try the given retry function up to `retry_count + 1` times. The first successful result is returned, or the last error if all attempts failed.
+pub fn retry<T, E: std::fmt::Display, F: Fn() -> Result<T, E>>(f: F) -> Result<T, E> {
+    let mut i = 0;
+
+    let retry_count = 5;
+    let mut wait_time = 1;
+
+    loop {
+        match f() {
+            Ok(info) => return Ok(info),
+            Err(e) => {
+                info!("{}", e);
+                i += 1;
+                if i > retry_count {
+                    return Err(e);
+                }
+                info!("Retrying ({i}/{retry_count}) in {wait_time} seconds...");
+                std::thread::sleep(std::time::Duration::from_secs(wait_time));
+                wait_time *= 2;
+            }
         }
     }
 }
