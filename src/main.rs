@@ -2,6 +2,7 @@ mod cmd_publish;
 mod cmd_review;
 mod config;
 mod job_utils;
+mod review;
 mod storefront;
 mod utils;
 
