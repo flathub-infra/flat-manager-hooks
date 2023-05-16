@@ -1,9 +1,10 @@
-use anyhow::{anyhow, Result};
-use ostree::{
-    gio::Cancellable, glib, glib::GString, prelude::InputStreamExtManual, MutableTree, Repo,
-};
+use std::{fs::create_dir_all, io::Read, path::PathBuf};
 
+use anyhow::{Result, anyhow};
+use elementtree::Element;
+use flate2::read::GzDecoder;
 use log::info;
+use ostree::{gio::Cancellable, glib, glib::GString, prelude::{FileExt, InputStreamExtManual}, MutableTree, Repo};
 
 pub fn get_job_id() -> Result<i64> {
     Ok(std::env::var("FLAT_MANAGER_JOB_ID")?.parse()?)
@@ -17,14 +18,30 @@ pub fn arch_from_ref(refstring: &str) -> String {
     refstring.split('/').nth(2).unwrap().to_string()
 }
 
+pub const APP_SUFFIXES: [&str; 3] = ["Sources", "Debug", "Locale"];
+
 pub fn app_id_from_ref(refstring: &str) -> String {
     let ref_id = refstring.split('/').nth(1).unwrap().to_string();
     let id_parts: Vec<&str> = ref_id.split('.').collect();
 
-    if ["Sources", "Debug", "Locale"].contains(id_parts.last().unwrap()) {
+    if APP_SUFFIXES.contains(id_parts.last().unwrap()) {
         id_parts[..id_parts.len() - 1].to_vec().join(".")
     } else {
         ref_id
+    }
+}
+
+/// Determines whether the refstring is either an app or extension (as opposed to a Sources/Debug/Locales ref, or
+/// something else like the branch we store screenshots in).
+pub fn is_primary_ref(refstring: &str) -> bool {
+    if refstring.starts_with("app/") {
+        true
+    } else if refstring.starts_with("runtime/") {
+        let ref_id = refstring.split('/').nth(1).unwrap().to_string();
+        let id_parts: Vec<&str> = ref_id.split('.').collect();
+        !APP_SUFFIXES.contains(id_parts.last().unwrap())
+    } else {
+        false
     }
 }
 
@@ -60,6 +77,32 @@ pub fn read_file_from_repo(repo: &Repo, file_checksum: &str) -> Result<Vec<u8>> 
 
     Ok(buffer)
 }
+
+pub fn get_appstream_path(app_id: &str) -> String {
+    format!("files/share/app-info/xmls/{app_id}.xml.gz")
+}
+
+/// Loads the appstream file from the given commit. Returns the path to the file within the flatpak, the file contents, and the parsed XML.
+pub fn load_appstream(repo: &Repo, app_id: &str, checksum: &str) -> Result<(String, Element)> {
+    let (file, _checksum) = repo.read_commit(checksum, Cancellable::NONE)?;
+
+    let appstream_path = get_appstream_path(app_id);
+    let appstream_file = file.resolve_relative_path(&appstream_path);
+    let (appstream_content, _etag) = appstream_file.load_contents(Cancellable::NONE)?;
+
+    let content = if appstream_path.ends_with(".gz") {
+        let mut s = String::new();
+        GzDecoder::new(&*appstream_content).read_to_string(&mut s)?;
+        s
+    } else {
+        String::from_utf8(appstream_content)?
+    };
+
+    let root = Element::from_reader(content.as_bytes())?;
+
+    Ok((content, root))
+}
+
 /// Wrapper for OSTree transactions that automatically aborts the transaction when dropped if it hasn't been committed.
 pub struct Transaction<'a> {
     repo: &'a Repo,
@@ -113,5 +156,52 @@ pub fn retry<T, E: std::fmt::Display, F: Fn() -> Result<T, E>>(f: F) -> Result<T
                 wait_time *= 2;
             }
         }
+    }
+}
+
+/// Gets a directory within the build directory, specific to the ref. This is useful for checking out specific files
+/// to run commands with, or for putting output files that might be useful to refer to after the build is done.
+/// The directory is created if it doesn't exist.
+pub fn ref_directory(refstring: &str) -> PathBuf {
+    let path = PathBuf::from("tmp/ref_dirs").join(refstring);
+    create_dir_all(&path).expect("Failed to create directory for ref");
+    path
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app_id_from_refstring() {
+        assert_eq!(
+            app_id_from_ref("app/org.gnome.Builder/x86_64/stable"),
+            "org.gnome.Builder"
+        );
+        assert_eq!(
+            app_id_from_ref("runtime/org.gnome.Builder.Sources/x86_64/stable"),
+            "org.gnome.Builder"
+        );
+        assert_eq!(
+            app_id_from_ref("runtime/org.gnome.Builder.Debug/x86_64/stable"),
+            "org.gnome.Builder"
+        );
+        assert_eq!(
+            app_id_from_ref("runtime/org.gnome.Builder.Locale/x86_64/stable"),
+            "org.gnome.Builder"
+        );
+        assert_eq!(
+            app_id_from_ref("runtime/org.gnome.Platform/x86_64/3.38"),
+            "org.gnome.Platform"
+        );
+    }
+
+    #[test]
+    fn test_is_primary_ref() {
+        assert!(is_primary_ref("app/org.gnome.Builder/x86_64/stable"));
+        assert!(is_primary_ref("runtime/org.gnome.Platform/x86_64/3.38"));
+        assert!(!is_primary_ref(
+            "runtime/org.gnome.Builder.Sources/x86_64/stable"
+        ));
     }
 }
