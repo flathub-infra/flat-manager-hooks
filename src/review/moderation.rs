@@ -5,9 +5,9 @@ use elementtree::Element;
 use ostree::Repo;
 use serde::{Deserialize, Serialize};
 
-use crate::utils::{
-    app_id_from_ref, arch_from_ref, get_appstream_path, get_build_id, get_job_id, is_primary_ref,
-    load_appstream,
+use crate::{
+    job_utils::{get_build_id, get_job_id},
+    utils::{app_id_from_ref, arch_from_ref, get_appstream_path, is_primary_ref, load_appstream},
 };
 
 use super::diagnostics::{CheckResult, ValidationDiagnostic};
@@ -27,7 +27,7 @@ pub fn review_build(
 
     for (refstring, checksum) in refs.iter() {
         if is_primary_ref(refstring) {
-            match review_ref(repo, refstring, checksum) {
+            match review_primary_ref(repo, refstring, checksum) {
                 Ok(Some(item)) => {
                     request
                         .app_metadata
@@ -45,29 +45,27 @@ pub fn review_build(
 }
 
 /// Collects the metadata from a single ref in the build.
-fn review_ref(
+fn review_primary_ref(
     repo: &Repo,
     refstring: &str,
     checksum: &str,
 ) -> Result<Option<ReviewItem>, ValidationDiagnostic> {
-    if is_primary_ref(refstring) {
-        let arch = arch_from_ref(refstring);
+    let arch = arch_from_ref(refstring);
 
-        /* For now, only review the x86_64 upload, since that's the one we show on the website */
-        if arch == "x86_64" {
-            let app_id = app_id_from_ref(refstring);
-            let appstream =
-                load_appstream(repo, &app_id, checksum).and_then(|(_, x)| get_app_metadata(&x));
+    /* For now, only review the x86_64 upload, since that's the one we show on the website */
+    if arch == "x86_64" {
+        let app_id = app_id_from_ref(refstring);
+        let appstream =
+            load_appstream(repo, &app_id, checksum).and_then(|(_, x)| get_app_metadata(&x));
 
-            return match appstream {
-                Ok(metadata) => Ok(Some(metadata)),
-                Err(e) => Err(ValidationDiagnostic::new_failed_to_load_appstream(
-                    &get_appstream_path(&app_id),
-                    &e.to_string(),
-                    refstring,
-                )),
-            };
-        }
+        return match appstream {
+            Ok(metadata) => Ok(Some(metadata)),
+            Err(e) => Err(ValidationDiagnostic::new_failed_to_load_appstream(
+                &get_appstream_path(&app_id),
+                &e.to_string(),
+                refstring,
+            )),
+        };
     }
 
     Ok(None)

@@ -6,14 +6,6 @@ use flate2::read::GzDecoder;
 use log::info;
 use ostree::{gio::Cancellable, glib, glib::GString, prelude::{FileExt, InputStreamExtManual}, MutableTree, Repo};
 
-pub fn get_job_id() -> Result<i64> {
-    Ok(std::env::var("FLAT_MANAGER_JOB_ID")?.parse()?)
-}
-
-pub fn get_build_id() -> Result<i64> {
-    Ok(std::env::var("FLAT_MANAGER_BUILD_ID")?.parse()?)
-}
-
 pub fn arch_from_ref(refstring: &str) -> String {
     refstring.split('/').nth(2).unwrap().to_string()
 }
@@ -82,8 +74,12 @@ pub fn get_appstream_path(app_id: &str) -> String {
     format!("files/share/app-info/xmls/{app_id}.xml.gz")
 }
 
-/// Loads the appstream file from the given commit. Returns the path to the file within the flatpak, the file contents, and the parsed XML.
-pub fn load_appstream(repo: &Repo, app_id: &str, checksum: &str) -> Result<(String, Element)> {
+/// Loads the appstream file from the given commit. Returns the file contents and the parsed XML.
+pub fn load_appstream(
+    repo: &Repo,
+    app_id: &str,
+    checksum: &str,
+) -> Result<(String, Element)> {
     let (file, _checksum) = repo.read_commit(checksum, Cancellable::NONE)?;
 
     let appstream_path = get_appstream_path(app_id);
@@ -161,7 +157,8 @@ pub fn retry<T, E: std::fmt::Display, F: Fn() -> Result<T, E>>(f: F) -> Result<T
 
 /// Gets a directory within the build directory, specific to the ref. This is useful for checking out specific files
 /// to run commands with, or for putting output files that might be useful to refer to after the build is done.
-/// The directory is created if it doesn't exist.
+/// The directory is accessible through flat-manager along with the rest of the build repo. It is created if it
+/// doesn't exist.
 pub fn ref_directory(refstring: &str) -> PathBuf {
     let path = PathBuf::from("tmp/ref_dirs").join(refstring);
     create_dir_all(&path).expect("Failed to create directory for ref");

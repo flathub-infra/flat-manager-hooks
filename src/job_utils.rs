@@ -2,10 +2,15 @@ use anyhow::Result;
 use reqwest::blocking::Client;
 use serde::Serialize;
 
-use crate::{
-    config::Config,
-    utils::{get_job_id, retry},
-};
+use crate::{config::Config, review::diagnostics::CheckResult, utils::retry};
+
+pub fn get_job_id() -> Result<i64> {
+    Ok(std::env::var("FLAT_MANAGER_JOB_ID")?.parse()?)
+}
+
+pub fn get_build_id() -> Result<i64> {
+    Ok(std::env::var("FLAT_MANAGER_BUILD_ID")?.parse()?)
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(tag = "status", content = "reason")]
@@ -40,17 +45,17 @@ fn set_check_status(args: &ReviewRequestArgs, config: &Config) -> Result<()> {
     })
 }
 
-pub fn require_review(reason: &str, result: String, config: &Config) -> Result<()> {
+pub fn require_review(reason: &str, result: &CheckResult, config: &Config) -> Result<()> {
     set_check_status(
         &ReviewRequestArgs {
             new_status: CheckStatus::ReviewRequired(reason.to_string()),
-            new_results: result,
+            new_results: serde_json::to_string(result)?,
         },
         config,
     )
 }
 
-pub fn mark_failure(reason: &str, result: String, config: &Config) -> Result<()> {
+pub fn mark_failure(reason: &str, result: &CheckResult, config: &Config) -> Result<()> {
     set_check_status(
         &ReviewRequestArgs {
             new_status: if config.validation_observe_only {
@@ -58,7 +63,7 @@ pub fn mark_failure(reason: &str, result: String, config: &Config) -> Result<()>
             } else {
                 CheckStatus::Failed(reason.to_string())
             },
-            new_results: result,
+            new_results: serde_json::to_string(result)?,
         },
         config,
     )
@@ -66,24 +71,24 @@ pub fn mark_failure(reason: &str, result: String, config: &Config) -> Result<()>
 
 pub fn mark_passed_with_warnings(
     reason: &str,
-    result: String,
+    result: &CheckResult,
     config: &Config,
 ) -> Result<()> {
     set_check_status(
         &ReviewRequestArgs {
             new_status: CheckStatus::PassedWithWarnings(reason.to_string()),
-            new_results: result,
+            new_results: serde_json::to_string(result)?,
         },
         config,
     )
 }
 
-pub fn mark_still_pending(result: String, config: &Config) -> Result<()> {
+pub fn mark_still_pending(result: &CheckResult, config: &Config) -> Result<()> {
     /* We can't mark it as passed because the process hasn't exited yet, but we still need to upload the results */
     set_check_status(
         &ReviewRequestArgs {
             new_status: CheckStatus::Pending,
-            new_results: result,
+            new_results: serde_json::to_string(result)?,
         },
         config,
     )
