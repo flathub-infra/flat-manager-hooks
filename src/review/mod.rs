@@ -14,7 +14,7 @@ use crate::utils::retry;
 
 use self::moderation::ReviewRequest;
 
-mod diagnostics;
+pub mod diagnostics;
 mod moderation;
 mod validation;
 
@@ -35,11 +35,7 @@ pub fn do_review(config: &Config) -> Result<()> {
 
     /* If any errors were found, mark the check as failed */
     if result.diagnostics.iter().any(|d| !d.is_warning) {
-        mark_failure(
-            "One or more validations failed.",
-            serde_json::to_string(&result)?,
-            config,
-        )?;
+        mark_failure("One or more validations failed.", &result, config)?;
         return Ok(());
     }
 
@@ -47,11 +43,7 @@ pub fn do_review(config: &Config) -> Result<()> {
 
     /* Make sure nothing failed while collecting metadata for the moderation step */
     if result.diagnostics.iter().any(|d| !d.is_warning) {
-        mark_failure(
-            "One or more validations failed.",
-            serde_json::to_string(&result)?,
-            config,
-        )?;
+        mark_failure("One or more validations failed.", &result, config)?;
         return Ok(());
     }
 
@@ -88,17 +80,13 @@ fn submit_review_request(
     if response.requires_review {
         require_review(
             "Some of the changes in this build require review by a moderator.",
-            serde_json::to_string(&result)?,
+            &result,
             config,
         )?;
     } else if !result.diagnostics.is_empty() {
-        mark_passed_with_warnings(
-            "One or more validations emitted warnings.",
-            serde_json::to_string(&result)?,
-            config,
-        )?;
+        mark_passed_with_warnings("One or more validations emitted warnings.", &result, config)?;
     } else {
-        mark_still_pending(serde_json::to_string(&result)?, config)?;
+        mark_still_pending(&result, config)?;
     }
 
     Ok(())

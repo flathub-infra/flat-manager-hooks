@@ -9,7 +9,9 @@ use ostree::gio::Cancellable;
 use ostree::prelude::FileExt;
 use ostree::Repo;
 
-use crate::utils::{app_id_from_ref, is_primary_ref, load_appstream, ref_directory};
+use crate::utils::{
+    app_id_from_ref, get_appstream_path, is_primary_ref, load_appstream, ref_directory,
+};
 
 use super::diagnostics::{CheckResult, DiagnosticInfo, ValidationDiagnostic};
 
@@ -133,7 +135,7 @@ fn validate_appstream_catalog_file(
 ) -> Result<Vec<ValidationDiagnostic>> {
     let app_id = app_id_from_ref(refstring);
 
-    let appstream_path = format!("files/share/app-info/xmls/{app_id}.xml.gz");
+    let appstream_path = get_appstream_path(&app_id);
     let (_appstream_content, appstream) = match load_appstream(repo, &app_id, checksum) {
         Ok(x) => x,
         Err(e) => {
