@@ -11,14 +11,14 @@ use log::info;
 use ostree::{
     gio::{Cancellable, File},
     glib::VariantDict,
-    prelude::{Cast, InputStreamExt},
+    prelude::Cast,
     MutableTree, Repo,
 };
 
 use crate::{
     config::Config,
     storefront::StorefrontInfo,
-    utils::{app_id_from_ref, mtree_lookup, mtree_lookup_file, Transaction},
+    utils::{app_id_from_ref, mtree_lookup, mtree_lookup_file, read_file_from_repo, Transaction},
 };
 
 #[derive(Args, Debug)]
@@ -127,12 +127,7 @@ pub fn rewrite_appstream_file(
         return Ok(());
     }
 
-    let (appstream_file, fileinfo, _) =
-        repo.load_file(&appstream_file.unwrap(), Cancellable::NONE)?;
-
-    let appstream_content = appstream_file
-        .unwrap()
-        .read_bytes(fileinfo.size().try_into().unwrap(), Cancellable::NONE)?;
+    let appstream_content = read_file_from_repo(repo, &appstream_file.unwrap())?;
 
     let mut s = String::new();
     GzDecoder::new(&*appstream_content).read_to_string(&mut s)?;

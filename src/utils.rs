@@ -1,6 +1,8 @@
 use std::error::Error;
 
-use ostree::{gio::Cancellable, glib, glib::GString, MutableTree, Repo};
+use ostree::{
+    gio::Cancellable, glib, glib::GString, prelude::InputStreamExtManual, MutableTree, Repo,
+};
 
 pub fn app_id_from_ref(refstring: &str) -> String {
     let ref_id = refstring.split('/').nth(1).unwrap().to_string();
@@ -36,6 +38,15 @@ pub fn mtree_lookup_file(mtree: &MutableTree, path: &[&str]) -> Result<GString, 
         .ok_or_else(|| "file not found".into())
 }
 
+pub fn read_file_from_repo(repo: &Repo, file_checksum: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    let (appstream_file, fileinfo, _) = repo.load_file(file_checksum, Cancellable::NONE)?;
+    let appstream_file = appstream_file.unwrap();
+
+    let mut buffer = vec![0; fileinfo.size() as usize];
+    appstream_file.read_all(&mut buffer, Cancellable::NONE)?;
+
+    Ok(buffer)
+}
 /// Wrapper for OSTree transactions that automatically aborts the transaction when dropped if it hasn't been committed.
 pub struct Transaction<'a> {
     repo: &'a Repo,
