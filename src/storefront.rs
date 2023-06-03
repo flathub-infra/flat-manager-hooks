@@ -1,5 +1,4 @@
-use std::error::Error;
-
+use anyhow::{anyhow, Result};
 use log::info;
 use serde::Deserialize;
 
@@ -29,10 +28,10 @@ pub struct PricingInfo {
 }
 
 impl StorefrontInfo {
-    pub fn fetch(backend_url: &str, app_id: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn fetch(backend_url: &str, app_id: &str) -> Result<Self> {
         let endpoint = format!("{backend_url}/purchases/storefront-info");
 
-        let convert_err = |e| format!("Failed to fetch storefront info from {}: {}", &endpoint, e);
+        let convert_err = |e| anyhow!("Failed to fetch storefront info from {}: {}", &endpoint, e);
 
         // Fetch the storefront info
         let response = reqwest::blocking::Client::new()

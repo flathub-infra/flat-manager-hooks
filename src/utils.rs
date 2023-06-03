@@ -1,5 +1,4 @@
-use std::error::Error;
-
+use anyhow::{anyhow, Result};
 use ostree::{
     gio::Cancellable, glib, glib::GString, prelude::InputStreamExtManual, MutableTree, Repo,
 };
@@ -18,27 +17,27 @@ pub fn app_id_from_ref(refstring: &str) -> String {
 pub fn mtree_lookup(
     mtree: &MutableTree,
     path: &[&str],
-) -> Result<(Option<GString>, Option<MutableTree>), Box<dyn Error>> {
+) -> Result<(Option<GString>, Option<MutableTree>)> {
     match path {
         [file] => mtree.lookup(file).map_err(Into::into),
         [subdir, rest @ ..] => mtree_lookup(
             &mtree
                 .lookup(subdir)?
                 .1
-                .ok_or_else(|| "subdirectory not found".to_string())?,
+                .ok_or(anyhow!("subdirectory not found"))?,
             rest,
         ),
-        [] => Err("no path given".into()),
+        [] => Err(anyhow!("no path given")),
     }
 }
 
-pub fn mtree_lookup_file(mtree: &MutableTree, path: &[&str]) -> Result<GString, Box<dyn Error>> {
+pub fn mtree_lookup_file(mtree: &MutableTree, path: &[&str]) -> Result<GString> {
     mtree_lookup(mtree, path)?
         .0
-        .ok_or_else(|| "file not found".into())
+        .ok_or(anyhow!("file not found"))
 }
 
-pub fn read_file_from_repo(repo: &Repo, file_checksum: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+pub fn read_file_from_repo(repo: &Repo, file_checksum: &str) -> Result<Vec<u8>> {
     let (appstream_file, fileinfo, _) = repo.load_file(file_checksum, Cancellable::NONE)?;
     let appstream_file = appstream_file.unwrap();
 

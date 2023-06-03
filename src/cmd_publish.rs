@@ -1,9 +1,9 @@
 use std::{
     collections::HashMap,
-    error::Error,
     io::{Read, Write},
 };
 
+use anyhow::{anyhow, Result};
 use clap::Args;
 use elementtree::Element;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
@@ -25,7 +25,7 @@ use crate::{
 pub struct PublishArgs {}
 
 impl PublishArgs {
-    pub fn run(&self, config: &Config) -> Result<(), Box<dyn Error>> {
+    pub fn run(&self, config: &Config) -> Result<()> {
         // Open the build repo at the current directory
         let repo = Repo::new(&File::for_path("."));
         repo.open(Cancellable::NONE)?;
@@ -60,7 +60,7 @@ fn rewrite_ref(
     storefront_info: &StorefrontInfo,
     refstring: &str,
     checksum: &str,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let app_id = app_id_from_ref(refstring);
 
     let tx = Transaction::new(repo)?;
@@ -116,7 +116,7 @@ pub fn rewrite_appstream_file(
     mtree: &MutableTree,
     app_id: &str,
     storefront_info: &StorefrontInfo,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let appstream_filename = &format!("{app_id}.xml.gz");
     let appstream_file = mtree_lookup_file(
         mtree,
@@ -159,7 +159,7 @@ pub fn rewrite_appstream_file(
     // Edit the MutableTree with a reference to the new appstream file
     mtree_lookup(mtree, &["files", "share", "app-info", "xmls"])?
         .1
-        .ok_or("file not found")?
+        .ok_or(anyhow!("file not found"))?
         .replace_file(&format!("{app_id}.xml.gz"), &checksum)?;
 
     Ok(())
@@ -168,18 +168,17 @@ pub fn rewrite_appstream_file(
 pub fn rewrite_appstream_xml(
     storefront_info: &StorefrontInfo,
     original_appstream: &str,
-) -> Result<String, Box<dyn Error>> {
+) -> Result<String> {
     let mut changed = false;
 
     let mut root = Element::from_reader(original_appstream.as_bytes())?;
 
     let mut components: Vec<_> = root.children_mut().collect();
     if components.len() != 1 {
-        return Err(format!(
+        return Err(anyhow!(
             "Expected exactly 1 <component> tag, found {}",
             components.len()
-        )
-        .into());
+        ));
     }
 
     let component = &mut components[0];
@@ -308,10 +307,7 @@ pub fn rewrite_appstream_xml(
 }
 
 /// Edits a commit's metadata according to the given storefront info.
-pub fn rewrite_metadata(
-    metadata: &VariantDict,
-    storefront_info: &StorefrontInfo,
-) -> Result<(), Box<dyn Error>> {
+pub fn rewrite_metadata(metadata: &VariantDict, storefront_info: &StorefrontInfo) -> Result<()> {
     let subsets = list_subsets(storefront_info);
 
     if subsets.is_empty() {
