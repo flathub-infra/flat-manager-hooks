@@ -1,5 +1,4 @@
-use std::error::Error;
-
+use anyhow::Result;
 use clap::Args;
 use reqwest::blocking::Client;
 use serde::Serialize;
@@ -22,7 +21,7 @@ struct ReviewRequestArgs {
 }
 
 impl ReviewArgs {
-    pub fn run(&self, config: &Config) -> Result<(), Box<dyn Error>> {
+    pub fn run(&self, config: &Config) -> Result<()> {
         let client = Client::new();
 
         let job_id: i64 = std::env::var("FLAT_MANAGER_JOB_ID")?.parse()?;

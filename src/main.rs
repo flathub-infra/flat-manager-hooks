@@ -4,10 +4,10 @@ mod config;
 mod storefront;
 mod utils;
 
-use std::error::Error;
 use std::fs;
 use std::{env, path::PathBuf};
 
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use cmd_publish::PublishArgs;
 use cmd_review::ReviewArgs;
@@ -28,7 +28,7 @@ enum Command {
     Review(ReviewArgs),
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     // Set up logging, with a default verbosity of "info"
     if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", "info");
