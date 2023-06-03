@@ -4,9 +4,7 @@ use ostree::gio::{Cancellable, File};
 use ostree::Repo;
 
 use crate::config::Config;
-use crate::job_utils::{
-    mark_failure, mark_passed_with_warnings, mark_still_pending, require_review,
-};
+use crate::job_utils::{mark_failure, mark_still_pending, require_review};
 use crate::review::diagnostics::CheckResult;
 use crate::review::moderation::{review_build, ReviewRequestResponse};
 use crate::review::validation::validate_build;
@@ -83,8 +81,6 @@ fn submit_review_request(
             &result,
             config,
         )?;
-    } else if !result.diagnostics.is_empty() {
-        mark_passed_with_warnings("One or more validations emitted warnings.", &result, config)?;
     } else {
         mark_still_pending(&result, config)?;
     }

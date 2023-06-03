@@ -69,20 +69,6 @@ pub fn mark_failure(reason: &str, result: &CheckResult, config: &Config) -> Resu
     )
 }
 
-pub fn mark_passed_with_warnings(
-    reason: &str,
-    result: &CheckResult,
-    config: &Config,
-) -> Result<()> {
-    set_check_status(
-        &ReviewRequestArgs {
-            new_status: CheckStatus::PassedWithWarnings(reason.to_string()),
-            new_results: serde_json::to_string(result)?,
-        },
-        config,
-    )
-}
-
 pub fn mark_still_pending(result: &CheckResult, config: &Config) -> Result<()> {
     /* We can't mark it as passed because the process hasn't exited yet, but we still need to upload the results */
     set_check_status(
