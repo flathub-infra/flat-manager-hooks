@@ -1,10 +1,16 @@
 use std::{fs::create_dir_all, io::Read, path::PathBuf};
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use elementtree::Element;
 use flate2::read::GzDecoder;
 use log::info;
-use ostree::{gio::Cancellable, glib, glib::GString, prelude::{FileExt, InputStreamExtManual}, MutableTree, Repo};
+use ostree::{
+    gio::Cancellable,
+    glib,
+    glib::GString,
+    prelude::{FileExt, InputStreamExtManual},
+    MutableTree, Repo,
+};
 
 pub fn arch_from_ref(refstring: &str) -> String {
     refstring.split('/').nth(2).unwrap().to_string()
@@ -75,11 +81,7 @@ pub fn get_appstream_path(app_id: &str) -> String {
 }
 
 /// Loads the appstream file from the given commit. Returns the file contents and the parsed XML.
-pub fn load_appstream(
-    repo: &Repo,
-    app_id: &str,
-    checksum: &str,
-) -> Result<(String, Element)> {
+pub fn load_appstream(repo: &Repo, app_id: &str, checksum: &str) -> Result<(String, Element)> {
     let (file, _checksum) = repo.read_commit(checksum, Cancellable::NONE)?;
 
     let appstream_path = get_appstream_path(app_id);

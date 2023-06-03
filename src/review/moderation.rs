@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use elementtree::Element;
 use ostree::Repo;
 use serde::{Deserialize, Serialize};
