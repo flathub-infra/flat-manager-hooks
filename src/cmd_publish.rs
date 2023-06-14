@@ -17,6 +17,7 @@ use ostree::{
 
 use crate::{
     config::Config,
+    job_utils::{get_build, get_is_republish, BuildExtended},
     storefront::StorefrontInfo,
     utils::{
         app_id_from_ref, mtree_lookup, mtree_lookup_file, read_file_from_repo, retry, Transaction,
@@ -34,6 +35,13 @@ impl PublishArgs {
 
         let refs = repo.list_refs(None, Cancellable::NONE)?;
 
+        // Get build info from flat-manager
+        let build = if get_is_republish()? {
+            None
+        } else {
+            Some(get_build(config)?)
+        };
+
         let mut storefront_infos = HashMap::new();
 
         // Rewrite each one
@@ -50,7 +58,7 @@ impl PublishArgs {
             }
             let storefront_info = storefront_infos.get(&app_id).unwrap();
 
-            rewrite_ref(&repo, storefront_info, &refstring, &checksum)?;
+            rewrite_ref(&repo, storefront_info, &build, &refstring, &checksum)?;
         }
 
         Ok(())
@@ -60,6 +68,7 @@ impl PublishArgs {
 fn rewrite_ref(
     repo: &Repo,
     storefront_info: &StorefrontInfo,
+    build: &Option<BuildExtended>,
     refstring: &str,
     checksum: &str,
 ) -> Result<()> {
@@ -70,7 +79,7 @@ fn rewrite_ref(
     // Create a MutableTree so we can edit the commit's files
     let mtree = MutableTree::from_commit(repo, checksum)?;
 
-    rewrite_appstream_file(repo, &mtree, &app_id, storefront_info)?;
+    rewrite_appstream_file(repo, &mtree, &app_id, storefront_info, build, refstring)?;
 
     // Write the modified MutableTree to the repository.
     let repo_file = repo.write_mtree(&mtree, Cancellable::NONE)?;
@@ -118,6 +127,8 @@ pub fn rewrite_appstream_file(
     mtree: &MutableTree,
     app_id: &str,
     storefront_info: &StorefrontInfo,
+    build: &Option<BuildExtended>,
+    refstring: &str,
 ) -> Result<()> {
     let appstream_filename = &format!("{app_id}.xml.gz");
     let appstream_file = mtree_lookup_file(
@@ -134,7 +145,7 @@ pub fn rewrite_appstream_file(
     let mut s = String::new();
     GzDecoder::new(&*appstream_content).read_to_string(&mut s)?;
 
-    let new_appstream = rewrite_appstream_xml(storefront_info, &s)?;
+    let new_appstream = rewrite_appstream_xml(storefront_info, refstring, build, &s)?;
 
     if new_appstream == s {
         // If the appstream contents didn't change, we shouldn't bother rewriting the file
@@ -169,6 +180,8 @@ pub fn rewrite_appstream_file(
 
 pub fn rewrite_appstream_xml(
     storefront_info: &StorefrontInfo,
+    refstring: &str,
+    build: &Option<BuildExtended>,
     original_appstream: &str,
 ) -> Result<String> {
     let mut changed = false;
@@ -189,11 +202,14 @@ pub fn rewrite_appstream_xml(
     for metadata_tag in component.find_all_mut("metadata") {
         metadata_tag.retain_children(|value: &Element| {
             if let Some(key) = value.get_attr("key") {
-                if key.to_lowercase().starts_with("flathub::verification")
-                    || key.to_lowercase().starts_with("flathub::pricing")
-                {
-                    changed = true;
-                    false
+                if key.to_lowercase().starts_with("flathub::") {
+                    if key.to_lowercase().starts_with("flathub::build::") && build.is_none() {
+                        /* On republishes, preserve the previous build log URL */
+                        true
+                    } else {
+                        changed = true;
+                        false
+                    }
                 } else {
                     true
                 }
@@ -301,6 +317,27 @@ pub fn rewrite_appstream_xml(
         );
     }
 
+    // Add build log tags
+    if let Some(build) = build {
+        if let Some(build_log_url) = &build.build.build_log_url {
+            set_value(
+                "flathub::build::build_log_url",
+                Some(build_log_url.as_str()),
+            );
+        }
+        if let Some(build_ref_log_url) = &build
+            .build_refs
+            .iter()
+            .find(|x| x.ref_name == refstring)
+            .and_then(|x| x.build_log_url.as_ref())
+        {
+            set_value(
+                "flathub::build::build_ref_log_url",
+                Some(build_ref_log_url.as_str()),
+            );
+        }
+    }
+
     if changed {
         Ok(root.to_string()?)
     } else {
@@ -364,7 +401,10 @@ fn list_subsets(storefront_info: &StorefrontInfo) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::storefront::{PricingInfo, VerificationInfo};
+    use crate::{
+        job_utils::{Build, BuildRef},
+        storefront::{PricingInfo, VerificationInfo},
+    };
 
     use super::*;
 
@@ -420,7 +460,18 @@ mod tests {
             is_free_software: None,
         };
 
-        let result = rewrite_appstream_xml(&storefront_info, original_appstream).unwrap();
+        let result = rewrite_appstream_xml(
+            &storefront_info,
+            "app/org.flatpak.Test/x86_64/stable",
+            &Some(BuildExtended {
+                build: Build {
+                    build_log_url: Some("https://example.com".to_string()),
+                },
+                build_refs: vec![],
+            }),
+            original_appstream,
+        )
+        .unwrap();
 
         assert_eq_ignore_space(
             &result,
@@ -433,6 +484,7 @@ mod tests {
         <value key="flathub::verification::method">website</value>
         <value key="flathub::verification::website">example.com</value>
         <value key="flathub::verification::login_is_organization">false</value>
+        <value key="flathub::build::build_log_url">https://example.com</value>
     </metadata>
 </component>
 </components>"#,
@@ -457,7 +509,27 @@ mod tests {
             is_free_software: None,
         };
 
-        let result = rewrite_appstream_xml(&storefront_info, original_appstream).unwrap();
+        let result = rewrite_appstream_xml(
+            &storefront_info,
+            "app/org.flatpak.Test/x86_64/stable",
+            &Some(BuildExtended {
+                build: Build {
+                    build_log_url: None,
+                },
+                build_refs: vec![
+                    BuildRef {
+                        ref_name: "app/org.flatpak.Test.Locale/x86_64/stable".to_string(),
+                        build_log_url: Some("https://example.com/wrong".to_string()),
+                    },
+                    BuildRef {
+                        ref_name: "app/org.flatpak.Test/x86_64/stable".to_string(),
+                        build_log_url: Some("https://example.com".to_string()),
+                    },
+                ],
+            }),
+            original_appstream,
+        )
+        .unwrap();
 
         assert_eq_ignore_space(
             &result,
@@ -466,6 +538,7 @@ mod tests {
     <id>org.flatpak.Test</id>
     <metadata>
         <value key="flathub::pricing::recommended_donation">1</value>
+        <value key="flathub::build::build_ref_log_url">https://example.com</value>
     </metadata>
 </component>
 </components>"#,
@@ -480,6 +553,7 @@ mod tests {
         <id>org.flatpak.Test</id>
         <metadata>
             <value key="flathub::pricing::recommended_donation">1</value>
+            <value key="flathub::build_log_url">https://example.com</value>
         </metadata>
     </component>
 </components>"#;
@@ -493,7 +567,18 @@ mod tests {
             is_free_software: None,
         };
 
-        let result = rewrite_appstream_xml(&storefront_info, original_appstream).unwrap();
+        let result = rewrite_appstream_xml(
+            &storefront_info,
+            "app/org.flatpak.Test/x86_64/master",
+            &Some(BuildExtended {
+                build: Build {
+                    build_log_url: None,
+                },
+                build_refs: vec![],
+            }),
+            original_appstream,
+        )
+        .unwrap();
 
         assert_eq_ignore_space(
             &result,
