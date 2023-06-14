@@ -1,6 +1,6 @@
 use anyhow::Result;
 use reqwest::blocking::Client;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{config::Config, review::diagnostics::CheckResult, utils::retry};
 
@@ -10,6 +10,44 @@ pub fn get_job_id() -> Result<i64> {
 
 pub fn get_build_id() -> Result<i64> {
     Ok(std::env::var("FLAT_MANAGER_BUILD_ID")?.parse()?)
+}
+
+pub fn get_is_republish() -> Result<bool> {
+    Ok(std::env::var("FLAT_MANAGER_IS_REPUBLISH")? == "true")
+}
+
+#[derive(Deserialize)]
+pub struct BuildExtended {
+    pub build: Build,
+    pub build_refs: Vec<BuildRef>,
+}
+
+#[derive(Deserialize)]
+pub struct Build {
+    pub build_log_url: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct BuildRef {
+    pub ref_name: String,
+    pub build_log_url: Option<String>,
+}
+
+pub fn get_build(config: &Config) -> Result<BuildExtended> {
+    let client = Client::new();
+    let build_id = get_build_id()?;
+    let build = retry(|| {
+        client
+            .get(format!(
+                "{}/api/v1/build/{}/extended",
+                config.flat_manager_url, build_id
+            ))
+            .bearer_auth(&config.flat_manager_token)
+            .send()?
+            .error_for_status()?
+            .json::<BuildExtended>()
+    })?;
+    Ok(build)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
