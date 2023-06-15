@@ -2,6 +2,8 @@ use anyhow::{anyhow, Result};
 use log::info;
 use serde::Deserialize;
 
+use crate::utils::retry;
+
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct StorefrontInfo {
@@ -53,4 +55,26 @@ impl StorefrontInfo {
 
         Ok(storefront_info)
     }
+}
+
+/// Uses a backend endpoint to determine if an app is FOSS based on its ID and license.
+pub fn get_is_free_software(
+    backend_url: &str,
+    app_id: &str,
+    license: Option<&str>,
+) -> Result<bool> {
+    let endpoint = format!("{backend_url}/purchases/storefront-info/is-free-software");
+    let client = reqwest::blocking::Client::new();
+    retry(|| {
+        let mut query = vec![("app_id", app_id)];
+        if let Some(license) = license {
+            query.push(("license", license));
+        }
+
+        let response =
+            client.get(&endpoint).query(&query).send().map_err(|e| {
+                anyhow!("Failed to fetch is-free-software from {}: {}", &endpoint, e)
+            })?;
+        response.json().map_err(Into::into)
+    })
 }

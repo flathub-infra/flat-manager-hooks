@@ -4,7 +4,7 @@ use ostree::gio::{Cancellable, File};
 use ostree::Repo;
 
 use crate::config::Config;
-use crate::job_utils::{mark_failure, mark_still_pending, require_review};
+use crate::job_utils::{get_build, mark_failure, mark_still_pending, require_review};
 use crate::review::diagnostics::CheckResult;
 use crate::review::moderation::{review_build, ReviewRequestResponse};
 use crate::review::validation::validate_build;
@@ -23,13 +23,15 @@ pub fn do_review(config: &Config) -> Result<()> {
 
     let refs = repo.list_refs(None, Cancellable::NONE)?;
 
+    let build = get_build(config)?;
+
     info!("Refs present in build: {:?}", refs.keys());
 
     let mut result = CheckResult {
         diagnostics: vec![],
     };
 
-    validate_build(&repo, &refs, &mut result)?;
+    validate_build(config, &build, &repo, &refs, &mut result)?;
 
     /* If any errors were found, mark the check as failed */
     if result.diagnostics.iter().any(|d| !d.is_warning) {

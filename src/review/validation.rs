@@ -8,24 +8,30 @@ use elementtree::Element;
 use ostree::gio::Cancellable;
 use ostree::prelude::FileExt;
 use ostree::Repo;
+use reqwest::Url;
 
-use crate::utils::{
-    app_id_from_ref, get_appstream_path, is_primary_ref, load_appstream, ref_directory,
+use crate::{
+    config::Config,
+    job_utils::BuildExtended,
+    storefront::get_is_free_software,
+    utils::{app_id_from_ref, get_appstream_path, is_primary_ref, load_appstream, ref_directory},
 };
 
 use super::diagnostics::{CheckResult, DiagnosticInfo, ValidationDiagnostic};
 
 /// Run all of the validations on a build.
 pub fn validate_build(
+    config: &Config,
+    build: &BuildExtended,
     repo: &Repo,
     refs: &HashMap<String, String>,
     result: &mut CheckResult,
 ) -> Result<()> {
     for (refstring, checksum) in refs.iter() {
         if is_primary_ref(refstring) {
-            result
-                .diagnostics
-                .extend(validate_primary_ref(repo, refstring, checksum)?);
+            result.diagnostics.extend(validate_primary_ref(
+                config, build, repo, refstring, checksum,
+            )?);
         }
     }
 
@@ -34,6 +40,8 @@ pub fn validate_build(
 
 /// Run all the validations on a "primary" ref (app, runtime, or extension).
 pub fn validate_primary_ref(
+    config: &Config,
+    build: &BuildExtended,
     repo: &Repo,
     refstring: &str,
     checksum: &str,
@@ -69,6 +77,8 @@ pub fn validate_primary_ref(
     /* Validate the appstream catalog file. This is the one that shows up on the website and in software centers.
     (The other ones are exported to the user's system.) */
     diagnostics.extend(validate_appstream_catalog_file(
+        config,
+        build,
         repo,
         checksum,
         refstring,
@@ -128,6 +138,8 @@ fn validate_appstream_file(
 }
 
 fn validate_appstream_catalog_file(
+    config: &Config,
+    build: &BuildExtended,
     repo: &Repo,
     checksum: &str,
     refstring: &str,
@@ -184,6 +196,28 @@ fn validate_appstream_catalog_file(
 
     /* For now, we don't run `appstream-util validate` or `appstreamcli validate` on this file, because it sometimes
     produces false positives. */
+
+    /* If the app is free software, it must have a link to the build log. The link is stored in flat-manager and will
+    be inserted into appstream by the publish hook. */
+    let license = component.find("project_license").map(|x| x.text());
+    let is_free_software = get_is_free_software(&config.backend_url, &app_id, license)?;
+
+    if is_free_software {
+        let build_url = build
+            .build_refs
+            .iter()
+            .find(|x| x.ref_name == refstring)
+            .and_then(|x| x.build_log_url.as_ref())
+            .or(build.build.build_log_url.as_ref());
+
+        if build_url.is_none() || Url::parse(build_url.unwrap()).is_err() {
+            diagnostics.push(ValidationDiagnostic {
+                info: DiagnosticInfo::MissingBuildLogUrl,
+                refstring: Some(refstring.to_string()),
+                is_warning: false,
+            })
+        }
+    }
 
     Ok(diagnostics)
 }
