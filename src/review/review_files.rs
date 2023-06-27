@@ -13,20 +13,35 @@ use ostree::{
 
 use crate::utils::{arch_from_ref, read_repo_file};
 
-use super::diagnostics::{DiagnosticInfo, ValidationDiagnostic};
+use super::diagnostics::{DiagnosticInfo, ValidationDiagnostic, WrongArchExecutable};
+
+#[derive(Default)]
+struct ReviewInfo {
+    wrong_arch_executables: Vec<WrongArchExecutable>,
+}
 
 pub fn review_files(ref_files: &File, refstring: &str) -> Result<Vec<ValidationDiagnostic>> {
     let mut diagnostics = vec![];
+    let mut info = Default::default();
 
     let files = ref_files.child("files");
-    diagnostics.extend(review_directory(&files, refstring)?);
+
+    review_directory(&files, refstring, &mut info)?;
+
+    if !info.wrong_arch_executables.is_empty() {
+        diagnostics.push(ValidationDiagnostic::new_warning(
+            DiagnosticInfo::WrongArchExecutables {
+                expected_arch: arch_from_ref(refstring),
+                executables: info.wrong_arch_executables,
+            },
+            Some(refstring.to_string()),
+        ));
+    }
 
     Ok(diagnostics)
 }
 
-fn review_directory(directory: &File, refstring: &str) -> Result<Vec<ValidationDiagnostic>> {
-    let mut diagnostics = vec![];
-
+fn review_directory(directory: &File, refstring: &str, info: &mut ReviewInfo) -> Result<()> {
     let children =
         directory.enumerate_children("standard::", FileQueryInfoFlags::NONE, Cancellable::NONE)?;
 
@@ -36,19 +51,19 @@ fn review_directory(directory: &File, refstring: &str) -> Result<Vec<ValidationD
 
         match child.file_type() {
             FileType::Regular => {
-                diagnostics.extend(review_file(&child_file, refstring)?);
+                review_file(&child_file, refstring, info)?;
             }
             FileType::Directory => {
-                diagnostics.extend(review_directory(&child_file, refstring)?);
+                review_directory(&child_file, refstring, info)?;
             }
             _ => {}
         }
     }
 
-    Ok(diagnostics)
+    Ok(())
 }
 
-fn review_file(file: &File, refstring: &str) -> Result<Vec<ValidationDiagnostic>> {
+fn review_file(file: &File, refstring: &str, info: &mut ReviewInfo) -> Result<()> {
     /* Work around https://github.com/ostreedev/ostree/issues/2703 */
     let repo_file: &RepoFile = file.downcast_ref().unwrap();
     let (stream, _, _) = repo_file
@@ -61,22 +76,22 @@ fn review_file(file: &File, refstring: &str) -> Result<Vec<ValidationDiagnostic>
     let (read, _partial_error) = stream.read_all(&mut buf, Cancellable::NONE)?;
     let (mime_type, _uncertain) = content_type_guess(file.path(), &buf[..read]);
 
-    let diagnostics = match mime_type.as_str() {
+    match mime_type.as_str() {
         "application/x-executable" | "application/x-sharedlib" => {
-            review_executable_file(file, refstring)?
+            review_executable_file(file, refstring, info)?
         }
-        _ => vec![],
+        _ => {}
     };
 
-    Ok(diagnostics)
+    Ok(())
 }
 
-fn review_executable_file(file: &File, refstring: &str) -> Result<Vec<ValidationDiagnostic>> {
+fn review_executable_file(file: &File, refstring: &str, info: &mut ReviewInfo) -> Result<()> {
     let data = read_repo_file(file.downcast_ref().unwrap())?;
     let elf = match ElfBytes::<AnyEndian>::minimal_parse(&data) {
         Ok(elf) => elf,
         // Ignore errors, we'll just skip this file
-        Err(_) => return Ok(vec![]),
+        Err(_) => return Ok(()),
     };
 
     let expected_arch = arch_from_ref(refstring);
@@ -87,19 +102,16 @@ fn review_executable_file(file: &File, refstring: &str) -> Result<Vec<Validation
     };
 
     if !expected_codes.iter().any(|x| x == &elf.ehdr.e_machine) {
-        return Ok(vec![ValidationDiagnostic::new_warning(
-            DiagnosticInfo::WrongArchExecutable {
-                path: file
-                    .path()
-                    .ok_or(anyhow!("expected path"))?
-                    .to_string_lossy()
-                    .to_string(),
-                detected_arch: e_machine_to_string(elf.ehdr.e_machine),
-                detected_arch_code: elf.ehdr.e_machine,
-            },
-            Some(refstring.to_string()),
-        )]);
+        info.wrong_arch_executables.push(WrongArchExecutable {
+            path: file
+                .path()
+                .ok_or(anyhow!("expected path"))?
+                .to_string_lossy()
+                .to_string(),
+            detected_arch: e_machine_to_string(elf.ehdr.e_machine),
+            detected_arch_code: elf.ehdr.e_machine,
+        });
     }
 
-    Ok(vec![])
+    Ok(())
 }

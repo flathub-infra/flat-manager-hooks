@@ -42,12 +42,18 @@ pub enum DiagnosticInfo {
     },
     /// No screenshots branch was uploaded.
     NoScreenshotBranch,
-    /// The ref contains an executable or shared library file that is for a different architecture than the ref.
-    WrongArchExecutable {
-        path: String,
-        detected_arch: String,
-        detected_arch_code: u16,
+    /// The ref contains executables or shared library files that are for a different architecture than the ref.
+    WrongArchExecutables {
+        expected_arch: String,
+        executables: Vec<WrongArchExecutable>,
     },
+}
+
+#[derive(Debug, Serialize)]
+pub struct WrongArchExecutable {
+    pub path: String,
+    pub detected_arch: String,
+    pub detected_arch_code: u16,
 }
 
 impl ValidationDiagnostic {
