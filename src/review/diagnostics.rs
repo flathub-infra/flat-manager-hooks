@@ -29,6 +29,12 @@ pub enum DiagnosticInfo {
     NoLocalIcon { appstream_path: String },
     /// The app is FOSS, but a URL for the build's CI log was not given or is not a valid URL.
     MissingBuildLogUrl,
+    /// The ref contains an executable or shared library file that is for a different architecture than the ref.
+    WrongArchExecutable {
+        path: String,
+        detected_arch: String,
+        detected_arch_code: u16,
+    },
 }
 
 impl ValidationDiagnostic {

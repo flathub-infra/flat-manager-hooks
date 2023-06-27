@@ -17,7 +17,10 @@ use crate::{
     utils::{app_id_from_ref, get_appstream_path, is_primary_ref, load_appstream, ref_directory},
 };
 
-use super::diagnostics::{CheckResult, DiagnosticInfo, ValidationDiagnostic};
+use super::{
+    diagnostics::{CheckResult, DiagnosticInfo, ValidationDiagnostic},
+    review_files::review_files,
+};
 
 /// Run all of the validations on a build.
 pub fn validate_build(
@@ -38,7 +41,7 @@ pub fn validate_build(
     Ok(())
 }
 
-/// Run all the validations on a "primary" ref (app, runtime, or extension).
+/// Run all the validations specific to "primary" refs (app, runtime, or extension).
 pub fn validate_primary_ref(
     config: &Config,
     build: &BuildExtended,
@@ -84,6 +87,9 @@ pub fn validate_primary_ref(
         refstring,
         has_local_icon,
     )?);
+
+    /* Run validations that cover all the files, e.g. warnings for executables with the wrong target architecture */
+    diagnostics.extend(review_files(&ref_files, refstring)?);
 
     Ok(diagnostics)
 }
