@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::{anyhow, Result};
 use log::info;
 use ostree::gio::{Cancellable, File};
@@ -14,9 +16,10 @@ use self::moderation::ReviewRequest;
 
 pub mod diagnostics;
 mod moderation;
+mod review_files;
 mod validation;
 
-pub fn do_review(config: &Config) -> Result<()> {
+pub fn do_validation(config: &Config) -> Result<(Repo, HashMap<String, String>, CheckResult)> {
     /* Open the build repo at the current directory */
     let repo = Repo::new(&File::for_path("."));
     repo.open(Cancellable::NONE)?;
@@ -32,6 +35,12 @@ pub fn do_review(config: &Config) -> Result<()> {
     };
 
     validate_build(config, &build, &repo, &refs, &mut result)?;
+
+    Ok((repo, refs, result))
+}
+
+pub fn do_review(config: &Config) -> Result<()> {
+    let (repo, refs, mut result) = do_validation(config)?;
 
     /* If any errors were found, mark the check as failed */
     if result.diagnostics.iter().any(|d| !d.is_warning) {

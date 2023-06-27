@@ -1,5 +1,6 @@
 mod cmd_publish;
 mod cmd_review;
+mod cmd_validate;
 mod config;
 mod job_utils;
 mod review;
@@ -13,6 +14,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use cmd_publish::PublishArgs;
 use cmd_review::ReviewArgs;
+use cmd_validate::ValidateArgs;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -28,6 +30,7 @@ struct Args {
 enum Command {
     Publish(PublishArgs),
     Review(ReviewArgs),
+    Validate(ValidateArgs),
 }
 
 fn main() -> Result<()> {
@@ -44,5 +47,6 @@ fn main() -> Result<()> {
     match args.command {
         Command::Publish(cmd) => cmd.run(&config),
         Command::Review(cmd) => cmd.run(&config),
+        Command::Validate(cmd) => cmd.run(&config),
     }
 }
