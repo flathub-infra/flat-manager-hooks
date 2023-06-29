@@ -5,9 +5,9 @@ use std::process::Command;
 
 use anyhow::Result;
 use elementtree::Element;
-use ostree::gio::Cancellable;
 use ostree::prelude::FileExt;
 use ostree::Repo;
+use ostree::{gio::Cancellable, prelude::Cast};
 use reqwest::Url;
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
     storefront::get_is_free_software,
     utils::{
         app_id_from_ref, arch_from_ref, get_appstream_path, is_primary_ref, load_appstream,
-        ref_directory,
+        read_repo_file, ref_directory,
     },
 };
 
@@ -116,8 +116,8 @@ fn validate_appstream_file(
         return Ok(vec![]);
     };
 
-    let appstream_content = match appstream_file.load_contents(Cancellable::NONE) {
-        Ok(content) => content.0,
+    let appstream_content = match read_repo_file(appstream_file.downcast_ref().unwrap()) {
+        Ok(content) => content,
         Err(error) => {
             diagnostics.push(ValidationDiagnostic::new_failed_to_load_appstream(
                 appstream_path,

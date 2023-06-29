@@ -8,8 +8,8 @@ use ostree::{
     gio::Cancellable,
     glib,
     glib::GString,
-    prelude::{FileExt, InputStreamExtManual},
-    MutableTree, Repo,
+    prelude::{Cast, FileExt, InputStreamExtManual},
+    MutableTree, Repo, RepoFile,
 };
 
 pub fn arch_from_ref(refstring: &str) -> String {
@@ -76,6 +76,14 @@ pub fn read_file_from_repo(repo: &Repo, file_checksum: &str) -> Result<Vec<u8>> 
     Ok(buffer)
 }
 
+pub fn read_repo_file(file: &RepoFile) -> Result<Vec<u8>> {
+    if !file.query_exists(Cancellable::NONE) {
+        return Err(anyhow!("File does not exist"));
+    }
+
+    read_file_from_repo(&file.repo().unwrap(), &file.checksum().unwrap())
+}
+
 pub fn get_appstream_path(app_id: &str) -> String {
     format!("files/share/app-info/xmls/{app_id}.xml.gz")
 }
@@ -86,7 +94,7 @@ pub fn load_appstream(repo: &Repo, app_id: &str, checksum: &str) -> Result<(Stri
 
     let appstream_path = get_appstream_path(app_id);
     let appstream_file = file.resolve_relative_path(&appstream_path);
-    let (appstream_content, _etag) = appstream_file.load_contents(Cancellable::NONE)?;
+    let appstream_content = read_repo_file(appstream_file.downcast_ref().unwrap())?;
 
     let content = if appstream_path.ends_with(".gz") {
         let mut s = String::new();
