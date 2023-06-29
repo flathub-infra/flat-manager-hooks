@@ -38,10 +38,11 @@ pub enum DiagnosticInfo {
     /// screenshots ref.
     MirroredScreenshotNotFound {
         appstream_path: String,
+        expected_branch: String,
         urls: Vec<String>,
     },
     /// No screenshots branch was uploaded.
-    NoScreenshotBranch,
+    NoScreenshotBranch { expected_branch: String },
     /// The ref contains executables or shared library files that are for a different architecture than the ref.
     WrongArchExecutables {
         expected_arch: String,

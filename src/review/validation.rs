@@ -259,7 +259,9 @@ fn validate_appstream_screenshot_mirror(
         }
         None => {
             return Ok(vec![ValidationDiagnostic::new(
-                DiagnosticInfo::NoScreenshotBranch,
+                DiagnosticInfo::NoScreenshotBranch {
+                    expected_branch: format!("screenshots/{arch}"),
+                },
                 Some(refstring.to_string()),
             )])
         }
@@ -309,6 +311,7 @@ fn validate_appstream_screenshot_mirror(
         diagnostics.push(ValidationDiagnostic::new(
             DiagnosticInfo::MirroredScreenshotNotFound {
                 appstream_path: appstream_path.to_owned(),
+                expected_branch: format!("screenshots/{arch}"),
                 urls: not_found_screenshots,
             },
             Some(refstring.to_string()),
