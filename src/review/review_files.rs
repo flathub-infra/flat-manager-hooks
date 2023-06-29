@@ -11,7 +11,7 @@ use ostree::{
     RepoFile,
 };
 
-use crate::utils::arch_from_ref;
+use crate::utils::{arch_from_ref, read_repo_file};
 
 use super::diagnostics::{DiagnosticInfo, ValidationDiagnostic};
 
@@ -73,7 +73,7 @@ fn review_file(file: &File, refstring: &str) -> Result<Vec<ValidationDiagnostic>
 }
 
 fn review_executable_file(file: &File, refstring: &str) -> Result<Vec<ValidationDiagnostic>> {
-    let (data, _etag) = file.load_contents(Cancellable::NONE)?;
+    let data = read_repo_file(file.downcast_ref().unwrap())?;
     let elf = match ElfBytes::<AnyEndian>::minimal_parse(&data) {
         Ok(elf) => elf,
         // Ignore errors, we'll just skip this file
