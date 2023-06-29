@@ -29,6 +29,19 @@ pub enum DiagnosticInfo {
     NoLocalIcon { appstream_path: String },
     /// The app is FOSS, but a URL for the build's CI log was not given or is not a valid URL.
     MissingBuildLogUrl,
+    /// A screenshot in appstream does not point to the flathub screenshot mirror.
+    ScreenshotNotMirrored {
+        appstream_path: String,
+        urls: Vec<String>,
+    },
+    /// A screenshot in appstream points to the flathub screenshot mirror, but the screenshot is not found in the
+    /// screenshots ref.
+    MirroredScreenshotNotFound {
+        appstream_path: String,
+        urls: Vec<String>,
+    },
+    /// No screenshots branch was uploaded.
+    NoScreenshotBranch,
     /// The ref contains an executable or shared library file that is for a different architecture than the ref.
     WrongArchExecutable {
         path: String,
