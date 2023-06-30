@@ -29,6 +29,8 @@ impl ValidateConfig for ValidateArgs {
     fn get_build(&self) -> Result<BuildExtended> {
         Ok(BuildExtended {
             build: Build {
+                app_id: None,
+                repo: String::from("stable"),
                 build_log_url: None,
             },
             build_refs: vec![],

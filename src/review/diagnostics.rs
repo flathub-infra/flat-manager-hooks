@@ -9,11 +9,12 @@ pub struct CheckResult {
 pub struct ValidationDiagnostic {
     pub refstring: Option<String>,
     pub is_warning: bool,
+    #[serde(flatten)]
     pub info: DiagnosticInfo,
 }
 
 #[derive(Debug, Serialize)]
-#[serde(tag = "category", content = "data")]
+#[serde(tag = "category", content = "data", rename_all = "snake_case")]
 pub enum DiagnosticInfo {
     /// The appstream file is missing or couldn't be read.
     FailedToLoadAppstream { path: String, error: String },

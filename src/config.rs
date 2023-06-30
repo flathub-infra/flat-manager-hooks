@@ -1,9 +1,10 @@
 use anyhow::{anyhow, Result};
+use log::info;
 use reqwest::blocking::Client;
 use serde::Deserialize;
 
 use crate::{
-    job_utils::{BuildExtended, CheckStatus, ReviewRequestArgs},
+    job_utils::{BuildExtended, BuildNotificationRequest, CheckStatus, ReviewRequestArgs},
     review::{
         diagnostics::CheckResult,
         moderation::{ReviewRequest, ReviewRequestResponse},
@@ -55,6 +56,7 @@ pub trait Config: ValidateConfig {
     }
 
     fn post_review_request(&self, request: ReviewRequest) -> Result<ReviewRequestResponse>;
+    fn post_email_notification(&self, result: &CheckResult) -> Result<()>;
 }
 
 #[derive(Clone, Deserialize)]
@@ -147,5 +149,46 @@ impl Config for RegularConfig {
                 .json::<ReviewRequestResponse>()
                 .map_err(convert_err)
         })
+    }
+
+    fn post_email_notification(&self, result: &CheckResult) -> Result<()> {
+        if result.diagnostics.is_empty() {
+            return Ok(());
+        }
+
+        let build = self.get_build()?;
+
+        let endpoint = format!("{}/emails/build-notification", self.backend_url);
+
+        let convert_err = |e| anyhow!("Failed to contact backend {}: {}", &endpoint, e);
+
+        let app_id = if let Some(app_id) = &build.build.app_id {
+            app_id.clone()
+        } else {
+            info!("Skipping notification email because app ID is not set for this build");
+            return Ok(());
+        };
+
+        info!("Submitting notification email");
+
+        let request = BuildNotificationRequest {
+            app_id,
+            build_id: self.get_build_id()?,
+            build_repo: build.build.repo,
+            diagnostics: &result.diagnostics,
+        };
+
+        retry(|| {
+            reqwest::blocking::Client::new()
+                .post(&endpoint)
+                .bearer_auth(&self.flat_manager_token)
+                .json(&request)
+                .send()
+                .map_err(convert_err)?
+                .error_for_status()
+                .map_err(convert_err)
+        })?;
+
+        Ok(())
     }
 }

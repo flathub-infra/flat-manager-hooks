@@ -43,6 +43,7 @@ pub fn do_review<C: Config>(config: &C) -> Result<()> {
     /* If any errors were found, mark the check as failed */
     if result.diagnostics.iter().any(|d| !d.is_warning) {
         config.mark_failure("One or more validations failed.", &result)?;
+        config.post_email_notification(&result)?;
         return Ok(());
     }
 
@@ -51,6 +52,7 @@ pub fn do_review<C: Config>(config: &C) -> Result<()> {
     /* Make sure nothing failed while collecting metadata for the moderation step */
     if result.diagnostics.iter().any(|d| !d.is_warning) {
         config.mark_failure("One or more validations failed.", &result)?;
+        config.post_email_notification(&result)?;
         return Ok(());
     }
 
@@ -66,6 +68,8 @@ pub fn do_review<C: Config>(config: &C) -> Result<()> {
     } else {
         config.mark_still_pending(&result)?;
     }
+
+    config.post_email_notification(&result)?;
 
     Ok(())
 }

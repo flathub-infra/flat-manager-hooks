@@ -471,6 +471,8 @@ mod tests {
             "app/org.flatpak.Test/x86_64/stable",
             &Some(BuildExtended {
                 build: Build {
+                    app_id: None,
+                    repo: "".to_owned(),
                     build_log_url: Some("https://example.com".to_string()),
                 },
                 build_refs: vec![],
@@ -520,6 +522,8 @@ mod tests {
             "app/org.flatpak.Test/x86_64/stable",
             &Some(BuildExtended {
                 build: Build {
+                    app_id: None,
+                    repo: "".to_owned(),
                     build_log_url: None,
                 },
                 build_refs: vec![
@@ -578,6 +582,8 @@ mod tests {
             "app/org.flatpak.Test/x86_64/master",
             &Some(BuildExtended {
                 build: Build {
+                    app_id: None,
+                    repo: "".to_owned(),
                     build_log_url: None,
                 },
                 build_refs: vec![],
