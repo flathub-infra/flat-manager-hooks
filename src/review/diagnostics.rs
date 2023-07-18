@@ -44,6 +44,8 @@ pub enum DiagnosticInfo {
     },
     /// No screenshots branch was uploaded.
     NoScreenshotBranch { expected_branch: String },
+    /// A file or directory was found in a screenshots branch that doesn't match the app ID.
+    UnexpectedFilesInScreenshotBranch { files: Vec<String> },
     /// The ref contains executables or shared library files that are for a different architecture than the ref.
     WrongArchExecutables {
         expected_arch: String,

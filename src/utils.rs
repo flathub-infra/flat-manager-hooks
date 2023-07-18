@@ -13,7 +13,11 @@ use ostree::{
 };
 
 pub fn arch_from_ref(refstring: &str) -> String {
-    refstring.split('/').nth(2).unwrap().to_string()
+    if is_screenshots_ref(refstring) {
+        return refstring.split('/').nth(1).unwrap().to_string();
+    } else {
+        refstring.split('/').nth(2).unwrap().to_string()
+    }
 }
 
 pub const APP_SUFFIXES: [&str; 3] = ["Sources", "Debug", "Locale"];
@@ -41,6 +45,10 @@ pub fn is_primary_ref(refstring: &str) -> bool {
     } else {
         false
     }
+}
+
+pub fn is_screenshots_ref(refstring: &str) -> bool {
+    refstring.starts_with("screenshots/")
 }
 
 pub fn mtree_lookup(
