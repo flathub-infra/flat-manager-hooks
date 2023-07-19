@@ -15,6 +15,7 @@ use clap::{Parser, Subcommand};
 use cmd_publish::PublishArgs;
 use cmd_review::ReviewArgs;
 use cmd_validate::ValidateArgs;
+use config::RegularConfig;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -42,7 +43,7 @@ fn main() -> Result<()> {
 
     let args = Args::parse();
 
-    let config = serde_json::from_reader(fs::File::open(args.config)?)?;
+    let config: RegularConfig = serde_json::from_reader(fs::File::open(args.config)?)?;
 
     match args.command {
         Command::Publish(cmd) => cmd.run(&config),

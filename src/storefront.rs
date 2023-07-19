@@ -35,12 +35,16 @@ impl StorefrontInfo {
 
         let convert_err = |e| anyhow!("Failed to fetch storefront info from {}: {}", &endpoint, e);
 
+        let client = reqwest::blocking::Client::new();
+
         // Fetch the storefront info
-        let response = reqwest::blocking::Client::new()
-            .get(&endpoint)
-            .query(&[("app_id", app_id)])
-            .send()
-            .map_err(convert_err)?;
+        let response = retry(|| {
+            client
+                .get(&endpoint)
+                .query(&[("app_id", app_id)])
+                .send()
+                .map_err(convert_err)
+        })?;
 
         let storefront_info = if response.status() == 404 {
             info!("storefront-info endpoint returned 404; this must be a new app");

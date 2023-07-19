@@ -7,7 +7,7 @@ use crate::{config::Config, review::do_validation};
 pub struct ValidateArgs {}
 
 impl ValidateArgs {
-    pub fn run(&self, config: &Config) -> Result<()> {
+    pub fn run<C: Config>(&self, config: &C) -> Result<()> {
         let (_repo, _refs, result) = do_validation(config)?;
 
         /* Print the results */
