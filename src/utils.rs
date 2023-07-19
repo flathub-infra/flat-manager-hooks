@@ -81,7 +81,7 @@ pub fn read_repo_file(file: &RepoFile) -> Result<Vec<u8>> {
         return Err(anyhow!("File does not exist"));
     }
 
-    read_file_from_repo(&file.repo().unwrap(), &file.checksum().unwrap())
+    read_file_from_repo(&file.repo(), &file.checksum())
 }
 
 pub fn get_appstream_path(app_id: &str) -> String {
