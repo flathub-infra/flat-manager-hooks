@@ -17,18 +17,16 @@ use ostree::{
 
 use crate::{
     config::Config,
-    job_utils::{get_build, get_is_republish, BuildExtended},
+    job_utils::BuildExtended,
     storefront::StorefrontInfo,
-    utils::{
-        app_id_from_ref, mtree_lookup, mtree_lookup_file, read_file_from_repo, retry, Transaction,
-    },
+    utils::{app_id_from_ref, mtree_lookup, mtree_lookup_file, read_file_from_repo, Transaction},
 };
 
 #[derive(Args, Debug)]
 pub struct PublishArgs {}
 
 impl PublishArgs {
-    pub fn run(&self, config: &Config) -> Result<()> {
+    pub fn run<C: Config>(&self, config: &C) -> Result<()> {
         // Open the build repo at the current directory
         let repo = Repo::new(&File::for_path("."));
         repo.open(Cancellable::NONE)?;
@@ -36,10 +34,10 @@ impl PublishArgs {
         let refs = repo.list_refs(None, Cancellable::NONE)?;
 
         // Get build info from flat-manager
-        let build = if get_is_republish()? {
+        let build = if config.get_is_republish()? {
             None
         } else {
-            Some(get_build(config)?)
+            Some(config.get_build()?)
         };
 
         let mut storefront_infos = HashMap::new();
@@ -52,7 +50,7 @@ impl PublishArgs {
 
             let app_id = app_id_from_ref(&refstring);
 
-            let storefront_info = retry(|| StorefrontInfo::fetch(&config.backend_url, &app_id))?;
+            let storefront_info = config.get_storefront_info(&app_id)?;
             if !storefront_infos.contains_key(&app_id) {
                 storefront_infos.insert(app_id.clone(), storefront_info);
             }

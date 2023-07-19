@@ -6,22 +6,23 @@ use ostree::Repo;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    job_utils::{get_build_id, get_job_id},
+    config::Config,
     utils::{app_id_from_ref, arch_from_ref, get_appstream_path, is_primary_ref, load_appstream},
 };
 
 use super::diagnostics::{CheckResult, ValidationDiagnostic};
 
 /// Review the metadata for a build and create a review request to send to the backend.
-pub fn review_build(
+pub fn review_build<C: Config>(
+    config: &C,
     repo: &Repo,
     refs: &HashMap<String, String>,
     result: &mut CheckResult,
 ) -> Result<ReviewRequest> {
     /* Collect the app's metadata and send it to the backend, to see if it needs to be held for review */
     let mut request = ReviewRequest {
-        build_id: get_build_id()?,
-        job_id: get_job_id()?,
+        build_id: config.get_build_id()?,
+        job_id: config.get_job_id()?,
         app_metadata: HashMap::new(),
     };
 

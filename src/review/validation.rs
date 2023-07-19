@@ -13,7 +13,6 @@ use reqwest::Url;
 use crate::{
     config::Config,
     job_utils::BuildExtended,
-    storefront::get_is_free_software,
     utils::{
         app_id_from_ref, arch_from_ref, get_appstream_path, is_primary_ref, load_appstream,
         read_repo_file, ref_directory,
@@ -26,8 +25,8 @@ use super::{
 };
 
 /// Run all of the validations on a build.
-pub fn validate_build(
-    config: &Config,
+pub fn validate_build<C: Config>(
+    config: &C,
     build: &BuildExtended,
     repo: &Repo,
     refs: &HashMap<String, String>,
@@ -45,8 +44,8 @@ pub fn validate_build(
 }
 
 /// Run all the validations specific to "primary" refs (app, runtime, or extension).
-pub fn validate_primary_ref(
-    config: &Config,
+pub fn validate_primary_ref<C: Config>(
+    config: &C,
     build: &BuildExtended,
     repo: &Repo,
     refstring: &str,
@@ -146,8 +145,8 @@ fn validate_appstream_file(
     Ok(diagnostics)
 }
 
-fn validate_appstream_catalog_file(
-    config: &Config,
+fn validate_appstream_catalog_file<C: Config>(
+    config: &C,
     build: &BuildExtended,
     repo: &Repo,
     checksum: &str,
@@ -219,7 +218,7 @@ fn validate_appstream_catalog_file(
     /* If the app is free software, it must have a link to the build log. The link is stored in flat-manager and will
     be inserted into appstream by the publish hook. */
     let license = component.find("project_license").map(|x| x.text());
-    let is_free_software = get_is_free_software(&config.backend_url, &app_id, license)?;
+    let is_free_software = config.get_is_free_software(&app_id, license)?;
 
     if is_free_software {
         let build_url = build

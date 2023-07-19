@@ -7,7 +7,7 @@ use crate::{config::Config, review::do_review};
 pub struct ReviewArgs {}
 
 impl ReviewArgs {
-    pub fn run(&self, config: &Config) -> Result<()> {
+    pub fn run<C: Config>(&self, config: &C) -> Result<()> {
         do_review(config)
     }
 }
