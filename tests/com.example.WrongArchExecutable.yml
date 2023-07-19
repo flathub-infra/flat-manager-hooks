@@ -1,0 +1,28 @@
+id: com.example.WrongArchExecutable
+runtime: org.freedesktop.Platform
+sdk: org.freedesktop.Sdk
+runtime-version: '22.08'
+command: main
+build-options:
+  env:
+    APP_ID: com.example.WrongArchExecutable
+modules:
+- name: build
+  buildsystem: simple
+  build-commands:
+  - gcc -o main main.c
+  - install -D main /app/bin/main
+  - sed -i "s/@APP_ID@/$APP_ID/g" appstream.xml
+  - install -D appstream.xml /app/share/metainfo/$APP_ID.appdata.xml
+  - sed -i "s/@APP_ID@/$APP_ID/g" app.desktop
+  - install -D app.desktop /app/share/applications/$APP_ID.desktop
+  - install -D app_icon.svg /app/share/icons/hicolor/scalable/apps/$APP_ID.svg
+  sources:
+  - type: file
+    path: main.c
+  - type: file
+    path: appstream.xml
+  - type: file
+    path: app_icon.svg
+  - type: file
+    path: app.desktop

@@ -1,0 +1,14 @@
+id: com.example.NoAppstream
+runtime: org.freedesktop.Platform
+sdk: org.freedesktop.Sdk
+runtime-version: '22.08'
+command: main
+modules:
+- name: test1
+  buildsystem: simple
+  build-commands:
+  - gcc -o main main.c
+  - install -D main /app/bin/main
+  sources:
+  - type: file
+    path: main.c
