@@ -5,7 +5,7 @@ use log::info;
 use ostree::gio::{Cancellable, File};
 use ostree::Repo;
 
-use crate::config::Config;
+use crate::config::{Config, ValidateConfig};
 use crate::review::diagnostics::CheckResult;
 use crate::review::moderation::review_build;
 use crate::review::validation::validate_build;
@@ -15,7 +15,7 @@ pub mod moderation;
 mod review_files;
 mod validation;
 
-pub fn do_validation<C: Config>(
+pub fn do_validation<C: ValidateConfig>(
     config: &C,
 ) -> Result<(Repo, HashMap<String, String>, CheckResult)> {
     /* Open the build repo at the current directory */

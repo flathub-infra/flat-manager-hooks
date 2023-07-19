@@ -1,6 +1,8 @@
 use std::{
     collections::HashMap,
+    fs,
     io::{Read, Write},
+    path::PathBuf,
 };
 
 use anyhow::{anyhow, Result};
@@ -16,17 +18,23 @@ use ostree::{
 };
 
 use crate::{
-    config::Config,
+    config::{Config, RegularConfig, ValidateConfig},
     job_utils::BuildExtended,
     storefront::StorefrontInfo,
     utils::{app_id_from_ref, mtree_lookup, mtree_lookup_file, read_file_from_repo, Transaction},
 };
 
 #[derive(Args, Debug)]
-pub struct PublishArgs {}
+pub struct PublishArgs {
+    /// Path to the config file. The script is usually run in the build directory, so this needs to be an absolute path.
+    #[arg(short, long)]
+    config: PathBuf,
+}
 
 impl PublishArgs {
-    pub fn run<C: Config>(&self, config: &C) -> Result<()> {
+    pub fn run(&self) -> Result<()> {
+        let config: RegularConfig = serde_json::from_reader(fs::File::open(self.config.clone())?)?;
+
         // Open the build repo at the current directory
         let repo = Repo::new(&File::for_path("."));
         repo.open(Cancellable::NONE)?;
