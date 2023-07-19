@@ -12,15 +12,19 @@ use crate::{
     utils::retry,
 };
 
-pub trait Config {
+/// Services for the validation step.
+pub trait ValidateConfig {
+    fn get_is_free_software(&self, app_id: &str, license: Option<&str>) -> Result<bool>;
+    fn get_build(&self) -> Result<BuildExtended>;
+}
+
+pub trait Config: ValidateConfig {
     fn get_build_id(&self) -> Result<i64>;
     fn get_job_id(&self) -> Result<i64>;
     fn get_is_republish(&self) -> Result<bool>;
     fn validation_observe_only(&self) -> bool;
 
-    fn get_build(&self) -> Result<BuildExtended>;
     fn get_storefront_info(&self, app_id: &str) -> Result<StorefrontInfo>;
-    fn get_is_free_software(&self, app_id: &str, license: Option<&str>) -> Result<bool>;
 
     fn set_check_status(&self, args: &ReviewRequestArgs) -> Result<()>;
 
@@ -64,21 +68,10 @@ pub struct RegularConfig {
 
 impl RegularConfig {}
 
-impl Config for RegularConfig {
-    fn get_job_id(&self) -> Result<i64> {
-        Ok(std::env::var("FLAT_MANAGER_JOB_ID")?.parse()?)
-    }
-
-    fn get_build_id(&self) -> Result<i64> {
-        Ok(std::env::var("FLAT_MANAGER_BUILD_ID")?.parse()?)
-    }
-
-    fn get_is_republish(&self) -> Result<bool> {
-        Ok(std::env::var("FLAT_MANAGER_IS_REPUBLISH")? == "true")
-    }
-
-    fn validation_observe_only(&self) -> bool {
-        self.validation_observe_only
+impl ValidateConfig for RegularConfig {
+    /// Uses a backend endpoint to determine if an app is FOSS based on its ID and license.
+    fn get_is_free_software(&self, app_id: &str, license: Option<&str>) -> Result<bool> {
+        get_is_free_software(&self.backend_url, app_id, license)
     }
 
     fn get_build(&self) -> Result<BuildExtended> {
@@ -96,6 +89,24 @@ impl Config for RegularConfig {
                 .json::<BuildExtended>()
         })?;
         Ok(build)
+    }
+}
+
+impl Config for RegularConfig {
+    fn get_job_id(&self) -> Result<i64> {
+        Ok(std::env::var("FLAT_MANAGER_JOB_ID")?.parse()?)
+    }
+
+    fn get_build_id(&self) -> Result<i64> {
+        Ok(std::env::var("FLAT_MANAGER_BUILD_ID")?.parse()?)
+    }
+
+    fn get_is_republish(&self) -> Result<bool> {
+        Ok(std::env::var("FLAT_MANAGER_IS_REPUBLISH")? == "true")
+    }
+
+    fn validation_observe_only(&self) -> bool {
+        self.validation_observe_only
     }
 
     fn get_storefront_info(&self, app_id: &str) -> Result<StorefrontInfo> {
@@ -136,10 +147,5 @@ impl Config for RegularConfig {
                 .json::<ReviewRequestResponse>()
                 .map_err(convert_err)
         })
-    }
-
-    /// Uses a backend endpoint to determine if an app is FOSS based on its ID and license.
-    fn get_is_free_software(&self, app_id: &str, license: Option<&str>) -> Result<bool> {
-        get_is_free_software(&self.backend_url, app_id, license)
     }
 }

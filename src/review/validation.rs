@@ -10,8 +10,8 @@ use ostree::Repo;
 use ostree::{gio::Cancellable, prelude::Cast};
 use reqwest::Url;
 
+use crate::config::ValidateConfig;
 use crate::{
-    config::Config,
     job_utils::BuildExtended,
     utils::{
         app_id_from_ref, arch_from_ref, get_appstream_path, is_primary_ref, load_appstream,
@@ -25,7 +25,7 @@ use super::{
 };
 
 /// Run all of the validations on a build.
-pub fn validate_build<C: Config>(
+pub fn validate_build<C: ValidateConfig>(
     config: &C,
     build: &BuildExtended,
     repo: &Repo,
@@ -44,7 +44,7 @@ pub fn validate_build<C: Config>(
 }
 
 /// Run all the validations specific to "primary" refs (app, runtime, or extension).
-pub fn validate_primary_ref<C: Config>(
+pub fn validate_primary_ref<C: ValidateConfig>(
     config: &C,
     build: &BuildExtended,
     repo: &Repo,
@@ -145,7 +145,7 @@ fn validate_appstream_file(
     Ok(diagnostics)
 }
 
-fn validate_appstream_catalog_file<C: Config>(
+fn validate_appstream_catalog_file<C: ValidateConfig>(
     config: &C,
     build: &BuildExtended,
     repo: &Repo,

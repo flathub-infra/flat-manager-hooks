@@ -7,22 +7,15 @@ mod review;
 mod storefront;
 mod utils;
 
-use std::fs;
-use std::{env, path::PathBuf};
-
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use cmd_publish::PublishArgs;
 use cmd_review::ReviewArgs;
 use cmd_validate::ValidateArgs;
-use config::RegularConfig;
+use std::env;
 
 #[derive(Parser, Debug)]
 struct Args {
-    /// Path to the config file. The script is usually run in the build directory, so this needs to be an absolute path.
-    #[arg(short, long)]
-    config: PathBuf,
-
     #[command(subcommand)]
     command: Command,
 }
@@ -43,11 +36,9 @@ fn main() -> Result<()> {
 
     let args = Args::parse();
 
-    let config: RegularConfig = serde_json::from_reader(fs::File::open(args.config)?)?;
-
     match args.command {
-        Command::Publish(cmd) => cmd.run(&config),
-        Command::Review(cmd) => cmd.run(&config),
-        Command::Validate(cmd) => cmd.run(&config),
+        Command::Publish(cmd) => cmd.run(),
+        Command::Review(cmd) => cmd.run(),
+        Command::Validate(cmd) => cmd.run(),
     }
 }
