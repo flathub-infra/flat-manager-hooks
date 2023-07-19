@@ -1,0 +1,15 @@
+{
+  "diagnostics": [
+    {
+      "refstring": "app/com.example.NoAppstream/x86_64/master",
+      "is_warning": false,
+      "info": {
+        "category": "FailedToLoadAppstream",
+        "data": {
+          "path": "files/share/app-info/xmls/com.example.NoAppstream.xml.gz",
+          "error": "File does not exist"
+        }
+      }
+    }
+  ]
+}

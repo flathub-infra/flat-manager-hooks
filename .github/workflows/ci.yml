@@ -32,7 +32,7 @@ jobs:
           components: clippy
 
       - name: Install dependencies
-        run: sudo apt-get install -y libostree-dev
+        run: sudo apt-get install -y libostree-dev flatpak-builder
 
       - name: Check
         uses: actions-rs/cargo@v1
@@ -49,3 +49,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+
+      - name: Install freedesktop SDK
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install -y flathub org.freedesktop.Sdk//22.08 org.freedesktop.Platform//22.08 org.flatpak.Builder//stable
+
+      - name: Validation Tests
+        working-directory: tests
+        run: ./run_tests.sh

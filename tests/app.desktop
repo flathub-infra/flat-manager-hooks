@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Test App
+Exec=main
+Type=Application
+Icon=@APP_ID@

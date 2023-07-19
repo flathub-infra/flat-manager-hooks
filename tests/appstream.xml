@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>@APP_ID@</id>
+  <name>Hello</name>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>CC-BY-4.0</project_license>
+  <url type="homepage">https://flatpak.org</url>
+  <summary>Test app for Flathub's flat-manager-hooks</summary>
+  <description><p>Test app for Flatpak</p></description>
+  <screenshots>
+    <screenshot type="default">
+      <image type="source" width="800" height="600">https://raw.githubusercontent.com/jameswestman/flat-manager-hooks/file-validation/tests/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release timestamp="2022-11-16" version="0.0.1"/>
+  </releases>
+  <content_rating></content_rating>
+</component>

@@ -1,0 +1,11 @@
+{
+  "diagnostics": [
+    {
+      "refstring": "app/com.example.NoScreenshotBranch/x86_64/master",
+      "is_warning": false,
+      "info": {
+        "category": "NoScreenshotBranch"
+      }
+    }
+  ]
+}
