@@ -53,8 +53,7 @@ fn review_file(file: &File, refstring: &str) -> Result<Vec<ValidationDiagnostic>
     let repo_file: &RepoFile = file.downcast_ref().unwrap();
     let (stream, _, _) = repo_file
         .repo()
-        .unwrap()
-        .load_file(&repo_file.checksum().unwrap(), Cancellable::NONE)?;
+        .load_file(&repo_file.checksum(), Cancellable::NONE)?;
     let stream = stream.unwrap();
 
     /* Detect content type from the filename and start of file */
