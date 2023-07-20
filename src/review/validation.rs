@@ -348,6 +348,7 @@ fn run_appstream_validate(
             "--command=appstream-util",
             "org.flatpak.Builder",
             "validate",
+            "--nonet",
             appstream_checkout.to_str().unwrap(),
         ])
         .output()?;
