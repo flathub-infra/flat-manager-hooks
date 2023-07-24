@@ -3,13 +3,16 @@
     {
       "refstring": "app/com.example.WrongArchExecutable/aarch64/master",
       "is_warning": true,
-      "info": {
-        "category": "WrongArchExecutable",
-        "data": {
-          "path": "/files/bin/main",
-          "detected_arch": "EM_X86_64",
-          "detected_arch_code": 62
-        }
+      "category": "wrong_arch_executables",
+      "data": {
+        "expected_arch": "aarch64",
+        "executables": [
+          {
+            "path": "/files/bin/main",
+            "detected_arch": "EM_X86_64",
+            "detected_arch_code": 62
+          }
+        ]
       }
     }
   ]

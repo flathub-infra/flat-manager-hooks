@@ -3,8 +3,9 @@
     {
       "refstring": "app/com.example.NoScreenshotBranch/x86_64/master",
       "is_warning": false,
-      "info": {
-        "category": "NoScreenshotBranch"
+      "category": "no_screenshot_branch",
+      "data": {
+        "expected_branch": "screenshots/x86_64"
       }
     }
   ]
