@@ -209,7 +209,12 @@ pub fn rewrite_appstream_xml(
         metadata_tag.retain_children(|value: &Element| {
             if let Some(key) = value.get_attr("key") {
                 if key.to_lowercase().starts_with("flathub::") {
-                    if key.to_lowercase().starts_with("flathub::build::") && build.is_none() {
+                    #[allow(clippy::if_same_then_else)]
+                    if key.to_lowercase() == "flathub::manifest" {
+                        /* Preserve the flathub::manifest key, it is allowed to be set by upstream */
+                        true
+                    } else if key.to_lowercase().starts_with("flathub::build::") && build.is_none()
+                    {
                         /* On republishes, preserve the previous build log URL */
                         true
                     } else {
