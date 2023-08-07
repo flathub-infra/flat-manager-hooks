@@ -15,7 +15,7 @@ do
     echo "===== Running test $MANIFEST ====="
     echo
 
-    flatpak-builder --mirror-screenshots-url=https://dl.flathub.org/media "--repo=repos/$APP_ID" --force-clean "build_dirs/$APP_ID" "$APP_ID.yml"
+    flatpak-builder --mirror-screenshots-url=https://dl.flathub.org/repo/screenshots "--repo=repos/$APP_ID" --force-clean "build_dirs/$APP_ID" "$APP_ID.yml"
 
     if [ $? -ne 0 ]; then
         echo "Build failed"

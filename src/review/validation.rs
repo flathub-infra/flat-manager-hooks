@@ -288,7 +288,7 @@ fn validate_appstream_screenshot_mirror(
 
         for thumbnail in thumbnails {
             let url = thumbnail.text();
-            if let Some(filename) = url.strip_prefix("https://dl.flathub.org/media/") {
+            if let Some(filename) = url.strip_prefix("https://dl.flathub.org/repo/screenshots/") {
                 /* Make sure the file exists in the screenshots branch */
                 let found = screenshots_file
                     .resolve_relative_path(filename)
