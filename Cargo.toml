@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = { version = "1.0.72", features = ["backtrace"] }
-clap = { version = "4.3.19", features = ["derive"] }
+clap = { version = "4.4.1", features = ["derive"] }
 diff = "0.1.13"
 elementtree = "1.2.3"
 elf = "0.7.2"
