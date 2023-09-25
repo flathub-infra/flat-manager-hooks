@@ -1,4 +1,4 @@
-use std::{fs::create_dir_all, io::Read, path::PathBuf};
+use std::io::Read;
 
 use anyhow::{anyhow, Result};
 use elementtree::Element;
@@ -163,16 +163,6 @@ pub fn retry<T, E: std::fmt::Display, F: Fn() -> Result<T, E>>(f: F) -> Result<T
             }
         }
     }
-}
-
-/// Gets a directory within the build directory, specific to the ref. This is useful for checking out specific files
-/// to run commands with, or for putting output files that might be useful to refer to after the build is done.
-/// The directory is accessible through flat-manager along with the rest of the build repo. It is created if it
-/// doesn't exist.
-pub fn ref_directory(refstring: &str) -> PathBuf {
-    let path = PathBuf::from("tmp/ref_dirs").join(refstring);
-    create_dir_all(&path).expect("Failed to create directory for ref");
-    path
 }
 
 #[cfg(test)]
