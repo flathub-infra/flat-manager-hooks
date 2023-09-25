@@ -1,22 +1,16 @@
 use std::collections::HashMap;
-use std::io::Write;
-use std::path::Path;
-use std::process::Command;
 
 use anyhow::Result;
 use elementtree::Element;
+use ostree::gio::Cancellable;
 use ostree::prelude::FileExt;
 use ostree::Repo;
-use ostree::{gio::Cancellable, prelude::Cast};
 use reqwest::Url;
 
 use crate::config::ValidateConfig;
 use crate::{
     job_utils::BuildExtended,
-    utils::{
-        app_id_from_ref, arch_from_ref, get_appstream_path, is_primary_ref, load_appstream,
-        read_repo_file, ref_directory,
-    },
+    utils::{app_id_from_ref, arch_from_ref, get_appstream_path, is_primary_ref, load_appstream},
 };
 
 use super::{
@@ -56,28 +50,11 @@ pub fn validate_primary_ref<C: ValidateConfig>(
 
     let mut diagnostics = vec![];
 
-    /* Check for a local 128x128 icon. If it's not present, the appstream files must contain a remote icon. */
     let has_local_icon = ref_files
         .resolve_relative_path(format!(
             "files/share/app-info/icons/flatpak/128x128/{app_id}.png"
         ))
         .query_exists(Cancellable::NONE);
-
-    /* Validate the input appstream files. Check both the current and legacy paths. */
-    diagnostics.extend(validate_appstream_file(
-        repo,
-        checksum,
-        refstring,
-        &format!("files/share/appdata/{app_id}.appdata.xml"),
-        has_local_icon,
-    )?);
-    diagnostics.extend(validate_appstream_file(
-        repo,
-        checksum,
-        refstring,
-        &format!("files/share/metainfo/{app_id}.metainfo.xml"),
-        has_local_icon,
-    )?);
 
     /* Validate the appstream catalog file. This is the one that shows up on the website and in software centers.
     (The other ones are exported to the user's system.) */
@@ -92,55 +69,6 @@ pub fn validate_primary_ref<C: ValidateConfig>(
 
     /* Run validations that cover all the files, e.g. warnings for executables with the wrong target architecture */
     diagnostics.extend(review_files(&ref_files, refstring)?);
-
-    Ok(diagnostics)
-}
-
-fn validate_appstream_file(
-    repo: &Repo,
-    checksum: &str,
-    refstring: &str,
-    appstream_path: &str,
-    has_local_icon: bool,
-) -> Result<Vec<ValidationDiagnostic>> {
-    let mut diagnostics = vec![];
-
-    let appstream_file = repo
-        .read_commit(checksum, Cancellable::NONE)?
-        .0
-        .resolve_relative_path(appstream_path);
-
-    /* It's okay for either of these files to not exist */
-    if !appstream_file.query_exists(Cancellable::NONE) {
-        return Ok(vec![]);
-    };
-
-    let appstream_content = match read_repo_file(appstream_file.downcast_ref().unwrap()) {
-        Ok(content) => content,
-        Err(error) => {
-            diagnostics.push(ValidationDiagnostic::new_failed_to_load_appstream(
-                appstream_path,
-                &error.to_string(),
-                refstring,
-            ));
-            return Ok(diagnostics);
-        }
-    };
-
-    let appstream = Element::from_reader(appstream_content.as_slice())?;
-
-    diagnostics.extend(run_appstream_validate(
-        appstream_content,
-        refstring,
-        appstream_path,
-    )?);
-
-    diagnostics.extend(validate_appstream_component(
-        &appstream,
-        refstring,
-        appstream_path,
-        has_local_icon,
-    )?);
 
     Ok(diagnostics)
 }
@@ -326,45 +254,6 @@ fn validate_appstream_screenshot_mirror(
     }
 
     Ok(diagnostics)
-}
-
-fn run_appstream_validate(
-    appstream_content: Vec<u8>,
-    refstring: &str,
-    appstream_path: &str,
-) -> Result<Vec<ValidationDiagnostic>> {
-    /* Run the appstream validation tool */
-    let appstream_checkout = ref_directory(refstring).join(
-        Path::new(appstream_path)
-            .file_name()
-            .expect("Failed to get file name"),
-    );
-    std::fs::File::create(&appstream_checkout)?.write_all(&appstream_content)?;
-
-    let output = Command::new("flatpak")
-        .args([
-            "run",
-            "--env=G_DEBUG=fatal-criticals",
-            "--command=appstream-util",
-            "org.flatpak.Builder",
-            "validate",
-            "--nonet",
-            appstream_checkout.to_str().unwrap(),
-        ])
-        .output()?;
-
-    if !output.status.success() {
-        Ok(vec![ValidationDiagnostic::new(
-            DiagnosticInfo::AppstreamValidation {
-                stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-                stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-                path: appstream_path.to_owned(),
-            },
-            Some(refstring.to_string()),
-        )])
-    } else {
-        Ok(vec![])
-    }
 }
 
 /// Make sure an appstream component has the correct ID.

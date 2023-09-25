@@ -17,12 +17,6 @@ pub struct ValidationDiagnostic {
 pub enum DiagnosticInfo {
     /// The appstream file is missing or couldn't be read.
     FailedToLoadAppstream { path: String, error: String },
-    /// There is a problem in one of the appstream files.
-    AppstreamValidation {
-        path: String,
-        stdout: String,
-        stderr: String,
-    },
     /// The app does not have a suitable icon.
     MissingIcon { appstream_path: String },
     /// The app has a remote icon listed in appstream, but no icon included in the build.
