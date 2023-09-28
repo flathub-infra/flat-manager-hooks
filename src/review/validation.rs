@@ -5,12 +5,14 @@ use std::process::Command;
 
 use anyhow::Result;
 use elementtree::Element;
+use ostree::gio::FileQueryInfoFlags;
 use ostree::prelude::FileExt;
 use ostree::Repo;
 use ostree::{gio::Cancellable, prelude::Cast};
 use reqwest::Url;
 
 use crate::config::ValidateConfig;
+use crate::utils::is_screenshots_ref;
 use crate::{
     job_utils::BuildExtended,
     utils::{
@@ -37,6 +39,10 @@ pub fn validate_build<C: ValidateConfig>(
             result.diagnostics.extend(validate_primary_ref(
                 config, build, repo, refstring, checksum,
             )?);
+        } else if is_screenshots_ref(refstring) {
+            result
+                .diagnostics
+                .extend(validate_screenshots_ref(repo, refstring, checksum)?);
         }
     }
 
@@ -259,7 +265,9 @@ fn validate_appstream_screenshot_mirror(
         }
         None => {
             return Ok(vec![ValidationDiagnostic::new(
-                DiagnosticInfo::NoScreenshotBranch,
+                DiagnosticInfo::NoScreenshotBranch {
+                    expected_branch: format!("screenshots/{arch}"),
+                },
                 Some(refstring.to_string()),
             )])
         }
@@ -309,6 +317,7 @@ fn validate_appstream_screenshot_mirror(
         diagnostics.push(ValidationDiagnostic::new(
             DiagnosticInfo::MirroredScreenshotNotFound {
                 appstream_path: appstream_path.to_owned(),
+                expected_branch: format!("screenshots/{arch}"),
                 urls: not_found_screenshots,
             },
             Some(refstring.to_string()),
@@ -427,4 +436,45 @@ fn validate_appstream_component(
     }
 
     Ok(diagnostics)
+}
+
+fn validate_screenshots_ref(
+    repo: &Repo,
+    refstring: &str,
+    checksum: &str,
+) -> Result<Vec<ValidationDiagnostic>> {
+    let mut unexpected_files = vec![];
+
+    let (ref_files, _checksum) = repo.read_commit(checksum, Cancellable::NONE)?;
+
+    let children =
+        ref_files.enumerate_children("standard::", FileQueryInfoFlags::NONE, Cancellable::NONE)?;
+
+    let app_ids = repo
+        .list_refs(None, Cancellable::NONE)?
+        .keys()
+        .filter(|s| is_primary_ref(s))
+        .map(|s| app_id_from_ref(s))
+        .collect::<Vec<String>>();
+
+    for child in children {
+        let child_name = child?.name().to_string_lossy().to_string();
+        if !app_ids
+            .iter()
+            .any(|app_id| child_name.starts_with(&format!("{app_id}-")))
+        {
+            unexpected_files.push(child_name);
+        }
+    }
+
+    if unexpected_files.is_empty() {
+        Ok(vec![])
+    } else {
+        Ok(vec![ValidationDiagnostic::new(
+            DiagnosticInfo::UnexpectedFilesInScreenshotBranch {
+                files: unexpected_files,
+            },
+            Some(refstring.to_string()),
+        )])
+    }
 }

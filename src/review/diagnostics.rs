@@ -9,11 +9,12 @@ pub struct CheckResult {
 pub struct ValidationDiagnostic {
     pub refstring: Option<String>,
     pub is_warning: bool,
+    #[serde(flatten)]
     pub info: DiagnosticInfo,
 }
 
 #[derive(Debug, Serialize)]
-#[serde(tag = "category", content = "data")]
+#[serde(tag = "category", content = "data", rename_all = "snake_case")]
 pub enum DiagnosticInfo {
     /// The appstream file is missing or couldn't be read.
     FailedToLoadAppstream { path: String, error: String },
@@ -38,16 +39,25 @@ pub enum DiagnosticInfo {
     /// screenshots ref.
     MirroredScreenshotNotFound {
         appstream_path: String,
+        expected_branch: String,
         urls: Vec<String>,
     },
     /// No screenshots branch was uploaded.
-    NoScreenshotBranch,
-    /// The ref contains an executable or shared library file that is for a different architecture than the ref.
-    WrongArchExecutable {
-        path: String,
-        detected_arch: String,
-        detected_arch_code: u16,
+    NoScreenshotBranch { expected_branch: String },
+    /// A file or directory was found in a screenshots branch that doesn't match the app ID.
+    UnexpectedFilesInScreenshotBranch { files: Vec<String> },
+    /// The ref contains executables or shared library files that are for a different architecture than the ref.
+    WrongArchExecutables {
+        expected_arch: String,
+        executables: Vec<WrongArchExecutable>,
     },
+}
+
+#[derive(Debug, Serialize)]
+pub struct WrongArchExecutable {
+    pub path: String,
+    pub detected_arch: String,
+    pub detected_arch_code: u16,
 }
 
 impl ValidationDiagnostic {
