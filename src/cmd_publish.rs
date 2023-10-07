@@ -378,7 +378,7 @@ pub fn rewrite_metadata(metadata: &VariantDict, storefront_info: &StorefrontInfo
 
     if is_paid {
         info!("Setting token type to 1");
-        metadata.insert("xa.token-type", &1_i32.to_le());
+        metadata.insert("xa.token-type", 1_i32.to_le());
     } else {
         metadata.remove("xa.token-type");
     }
