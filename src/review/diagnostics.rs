@@ -17,6 +17,8 @@ pub struct ValidationDiagnostic {
 pub enum DiagnosticInfo {
     /// The appstream file is missing or couldn't be read.
     FailedToLoadAppstream { path: String, error: String },
+    /// There is a problem in one of the appstream files.
+    FlatpakBuilderLint { stdout: String, stderr: String },
     /// The app does not have a suitable icon.
     MissingIcon { appstream_path: String },
     /// The app has a remote icon listed in appstream, but no icon included in the build.
@@ -24,18 +26,6 @@ pub enum DiagnosticInfo {
     /// The app is FOSS, but a URL for the build's CI log was not given or is not a valid URL.
     MissingBuildLogUrl,
     /// A screenshot in appstream does not point to the flathub screenshot mirror.
-    ScreenshotNotMirrored {
-        appstream_path: String,
-        urls: Vec<String>,
-    },
-    /// A screenshot in appstream points to the flathub screenshot mirror, but the screenshot is not found in the
-    /// screenshots ref.
-    MirroredScreenshotNotFound {
-        appstream_path: String,
-        urls: Vec<String>,
-    },
-    /// No screenshots branch was uploaded.
-    NoScreenshotBranch,
     /// The ref contains an executable or shared library file that is for a different architecture than the ref.
     WrongArchExecutable {
         path: String,
