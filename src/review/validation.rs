@@ -4,7 +4,6 @@ use std::process::Command;
 use anyhow::Result;
 use elementtree::Element;
 use ostree::gio::Cancellable;
-use ostree::prelude::FileExt;
 use ostree::Repo;
 use reqwest::Url;
 
@@ -46,18 +45,9 @@ pub fn validate_primary_ref<C: ValidateConfig>(
     refstring: &str,
     checksum: &str,
 ) -> Result<Vec<ValidationDiagnostic>> {
-    let app_id = app_id_from_ref(refstring);
     let (ref_files, _checksum) = repo.read_commit(checksum, Cancellable::NONE)?;
 
     let mut diagnostics = vec![];
-
-    /* Check for a local 128x128 icon. If it's not present, the appstream files must contain a remote icon. */
-    let has_local_icon = ref_files
-        .resolve_relative_path(format!(
-            "files/share/app-info/icons/flatpak/128x128/{app_id}.png"
-        ))
-        .query_exists(Cancellable::NONE);
-
     diagnostics.extend(validate_flatpak_build(refstring)?);
 
     /* Validate the appstream catalog file. This is the one that shows up on the website and in software centers.
@@ -68,7 +58,6 @@ pub fn validate_primary_ref<C: ValidateConfig>(
         repo,
         checksum,
         refstring,
-        has_local_icon,
     )?);
 
     /* Run validations that cover all the files, e.g. warnings for executables with the wrong target architecture */
@@ -116,7 +105,6 @@ fn validate_appstream_catalog_file<C: ValidateConfig>(
     repo: &Repo,
     checksum: &str,
     refstring: &str,
-    has_local_icon: bool,
 ) -> Result<Vec<ValidationDiagnostic>> {
     let app_id = app_id_from_ref(refstring);
 
@@ -164,7 +152,6 @@ fn validate_appstream_catalog_file<C: ValidateConfig>(
         component,
         refstring,
         &appstream_path,
-        has_local_icon,
     )?);
 
     /* For now, we don't run `appstream-util validate` or `appstreamcli validate` on this file, because it sometimes
@@ -218,7 +205,6 @@ fn validate_appstream_component(
     component: &Element,
     refstring: &str,
     appstream_path: &str,
-    has_local_icon: bool,
 ) -> Result<Vec<ValidationDiagnostic>> {
     let mut diagnostics = vec![];
 
@@ -228,30 +214,6 @@ fn validate_appstream_component(
             &e,
             refstring,
         ));
-    }
-
-    if !has_local_icon {
-        let has_remote_icon = component
-            .find_all("icon")
-            .any(|icon| icon.get_attr("type") == Some("remote"));
-
-        if has_remote_icon {
-            /* Just emit a warning */
-            diagnostics.push(ValidationDiagnostic::new_warning(
-                DiagnosticInfo::NoLocalIcon {
-                    appstream_path: appstream_path.to_owned(),
-                },
-                Some(refstring.to_string()),
-            ));
-        } else {
-            /* No icon at all, this is an error */
-            diagnostics.push(ValidationDiagnostic::new(
-                DiagnosticInfo::MissingIcon {
-                    appstream_path: appstream_path.to_owned(),
-                },
-                Some(refstring.to_string()),
-            ));
-        }
     }
 
     Ok(diagnostics)

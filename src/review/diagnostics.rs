@@ -20,10 +20,6 @@ pub enum DiagnosticInfo {
     FailedToLoadAppstream { path: String, error: String },
     /// There is a problem in one of the appstream files.
     FlatpakBuilderLint { stdout: String, stderr: String },
-    /// The app does not have a suitable icon.
-    MissingIcon { appstream_path: String },
-    /// The app has a remote icon listed in appstream, but no icon included in the build.
-    NoLocalIcon { appstream_path: String },
     /// The app is FOSS, but a URL for the build's CI log was not given or is not a valid URL.
     MissingBuildLogUrl,
     /// A screenshot in appstream does not point to the flathub screenshot mirror.
