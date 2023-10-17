@@ -32,15 +32,7 @@ pub fn app_id_from_ref(refstring: &str) -> String {
 /// Determines whether the refstring is either an app or extension (as opposed to a Sources/Debug/Locales ref, or
 /// something else like the branch we store screenshots in).
 pub fn is_primary_ref(refstring: &str) -> bool {
-    if refstring.starts_with("app/") {
-        true
-    } else if refstring.starts_with("runtime/") {
-        let ref_id = refstring.split('/').nth(1).unwrap().to_string();
-        let id_parts: Vec<&str> = ref_id.split('.').collect();
-        !APP_SUFFIXES.contains(id_parts.last().unwrap())
-    } else {
-        false
-    }
+    refstring.starts_with("app/")
 }
 
 pub fn mtree_lookup(
