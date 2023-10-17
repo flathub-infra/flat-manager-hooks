@@ -53,11 +53,7 @@ pub fn validate_primary_ref<C: ValidateConfig>(
     /* Validate the appstream catalog file. This is the one that shows up on the website and in software centers.
     (The other ones are exported to the user's system.) */
     diagnostics.extend(validate_appstream_catalog_file(
-        config,
-        build,
-        repo,
-        checksum,
-        refstring,
+        config, build, repo, checksum, refstring,
     )?);
 
     /* Run validations that cover all the files, e.g. warnings for executables with the wrong target architecture */
