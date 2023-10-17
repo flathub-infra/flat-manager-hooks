@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn test_is_primary_ref() {
         assert!(is_primary_ref("app/org.gnome.Builder/x86_64/stable"));
-        assert!(is_primary_ref("runtime/org.gnome.Platform/x86_64/3.38"));
+        assert!(!is_primary_ref("runtime/org.gnome.Platform/x86_64/3.38"));
         assert!(!is_primary_ref(
             "runtime/org.gnome.Builder.Sources/x86_64/stable"
         ));
