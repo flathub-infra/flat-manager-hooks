@@ -17,6 +17,16 @@ pub fn arch_from_ref(refstring: &str) -> String {
 }
 
 pub const APP_SUFFIXES: [&str; 3] = ["Sources", "Debug", "Locale"];
+pub const APPID_SKIPLIST: [&str; 8] = [
+    "org.freedesktop.Platform.ClInfo",
+    "org.freedesktop.Platform.GlxInfo",
+    "org.freedesktop.Platform.VulkanInfo",
+    "org.freedesktop.Platform.VaInfo",
+    "org.mozilla.firefox",
+    "org.mozilla.Thunderbird",
+    "om.obsproject.Studio",
+    "net.pcsx2.PCSX2",
+];
 
 pub fn app_id_from_ref(refstring: &str) -> String {
     let ref_id = refstring.split('/').nth(1).unwrap().to_string();
@@ -32,7 +42,12 @@ pub fn app_id_from_ref(refstring: &str) -> String {
 /// Determines whether the refstring is either an app or extension (as opposed to a Sources/Debug/Locales ref, or
 /// something else like the branch we store screenshots in).
 pub fn is_primary_ref(refstring: &str) -> bool {
-    refstring.starts_with("app/")
+    if refstring.starts_with("app/") {
+        let appid = refstring.split('/').nth(1).unwrap().to_string();
+        !APPID_SKIPLIST.contains(&appid.as_str())
+    } else {
+        false
+    }
 }
 
 pub fn mtree_lookup(
