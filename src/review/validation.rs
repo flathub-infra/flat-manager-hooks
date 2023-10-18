@@ -68,6 +68,7 @@ fn run_flatpak_builder_lint(refstring: &str) -> Result<Vec<ValidationDiagnostic>
             "run",
             "--command=flatpak-builder-lint",
             "org.flatpak.Builder",
+            "--exceptions",
             "repo",
             "--cwd",
             "noop",
