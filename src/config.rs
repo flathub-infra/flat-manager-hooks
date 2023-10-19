@@ -39,7 +39,7 @@ pub trait Config: ValidateConfig {
     fn mark_failure(&self, reason: &str, result: &CheckResult) -> Result<()> {
         self.set_check_status(&ReviewRequestArgs {
             new_status: if self.validation_observe_only() {
-                CheckStatus::PassedWithWarnings(reason.to_string())
+                CheckStatus::Pending
             } else {
                 CheckStatus::Failed(reason.to_string())
             },
