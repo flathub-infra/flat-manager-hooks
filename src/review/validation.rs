@@ -78,7 +78,7 @@ fn run_flatpak_builder_lint(refstring: &str) -> Result<Vec<ValidationDiagnostic>
     if !output.status.success() {
         Ok(vec![ValidationDiagnostic::new(
             DiagnosticInfo::FlatpakBuilderLint {
-                stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+                stdout: serde_json::from_slice::<serde_json::Value>(&output.stdout).unwrap(),
                 stderr: String::from_utf8_lossy(&output.stderr).to_string(),
             },
             Some(refstring.to_string()),
