@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     config::Config,
-    utils::{app_id_from_ref, arch_from_ref, get_appstream_path, is_primary_ref, load_appstream},
+    utils::{app_id_from_ref, arch_from_ref, is_primary_ref, load_appstream},
 };
 
 use super::diagnostics::{CheckResult, ValidationDiagnostic};
