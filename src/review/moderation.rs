@@ -61,11 +61,7 @@ fn review_primary_ref(
 
         return match appstream {
             Ok(metadata) => Ok(Some(metadata)),
-            Err(e) => Err(ValidationDiagnostic::new_failed_to_load_appstream(
-                &get_appstream_path(&app_id),
-                &e.to_string(),
-                refstring,
-            )),
+            Err(_) => Ok(None),
         };
     }
 

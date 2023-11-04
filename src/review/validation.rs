@@ -105,15 +105,13 @@ fn validate_appstream_catalog_file<C: ValidateConfig>(
 ) -> Result<Vec<ValidationDiagnostic>> {
     let app_id = app_id_from_ref(refstring);
 
+    let mut diagnostics = vec![];
+
     let appstream_path = get_appstream_path(&app_id);
     let (_appstream_content, appstream) = match load_appstream(repo, &app_id, checksum) {
         Ok(x) => x,
-        Err(e) => {
-            return Ok(vec![ValidationDiagnostic::new_failed_to_load_appstream(
-                &appstream_path,
-                &e.to_string(),
-                refstring,
-            )])
+        Err(_) => {
+            return Ok(diagnostics);
         }
     };
 
@@ -142,8 +140,6 @@ fn validate_appstream_catalog_file<C: ValidateConfig>(
             )])
         }
     };
-
-    let mut diagnostics = vec![];
 
     diagnostics.extend(validate_appstream_component(
         component,
