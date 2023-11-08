@@ -1,94 +1,21 @@
-use std::collections::HashMap;
-
-use anyhow::{anyhow, Result};
-use elementtree::Element;
-use ostree::Repo;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     config::Config,
-    utils::{app_id_from_ref, arch_from_ref, is_primary_ref, load_appstream},
 };
-
-use super::diagnostics::{CheckResult, ValidationDiagnostic};
 
 /// Review the metadata for a build and create a review request to send to the backend.
 pub fn review_build<C: Config>(
     config: &C,
-    repo: &Repo,
-    refs: &HashMap<String, String>,
-    result: &mut CheckResult,
 ) -> Result<ReviewRequest> {
     /* Collect the app's metadata and send it to the backend, to see if it needs to be held for review */
-    let mut request = ReviewRequest {
+    let request = ReviewRequest {
         build_id: config.get_build_id()?,
         job_id: config.get_job_id()?,
-        app_metadata: HashMap::new(),
     };
 
-    for (refstring, checksum) in refs.iter() {
-        if is_primary_ref(refstring) {
-            match review_primary_ref(repo, refstring, checksum) {
-                Ok(Some(item)) => {
-                    request
-                        .app_metadata
-                        .insert(app_id_from_ref(refstring), item);
-                }
-                Ok(None) => {}
-                Err(diagnostic) => {
-                    result.diagnostics.push(diagnostic);
-                }
-            }
-        }
-    }
-
     Ok(request)
-}
-
-/// Collects the metadata from a single ref in the build.
-fn review_primary_ref(
-    repo: &Repo,
-    refstring: &str,
-    checksum: &str,
-) -> Result<Option<ReviewItem>, ValidationDiagnostic> {
-    let arch = arch_from_ref(refstring);
-
-    /* For now, only review the x86_64 upload, since that's the one we show on the website */
-    if arch == "x86_64" {
-        let app_id = app_id_from_ref(refstring);
-        let appstream =
-            load_appstream(repo, &app_id, checksum).and_then(|(_, x)| get_app_metadata(&x));
-
-        return match appstream {
-            Ok(metadata) => Ok(Some(metadata)),
-            Err(_) => Ok(None),
-        };
-    }
-
-    Ok(None)
-}
-
-fn get_app_metadata(root: &Element) -> Result<ReviewItem> {
-    let component = root
-        .find("component")
-        .ok_or(anyhow!("No <component> in appstream"))?;
-
-    Ok(ReviewItem {
-        name: component.find("name").map(|f| f.text().to_string()),
-        summary: component.find("summary").map(|f| f.text().to_string()),
-        developer_name: component
-            .find("developer_name")
-            .map(|f| f.text().to_string()),
-        project_license: component
-            .find("project_license")
-            .map(|f| f.text().to_string()),
-        project_group: component
-            .find("project_group")
-            .map(|f| f.text().to_string()),
-        compulsory_for_desktop: component
-            .find("compulsory_for_desktop")
-            .map(|f| f.text().to_string()),
-    })
 }
 
 #[derive(Debug, Serialize)]
@@ -105,7 +32,6 @@ pub struct ReviewItem {
 pub struct ReviewRequest {
     pub build_id: i64,
     pub job_id: i64,
-    pub app_metadata: HashMap<String, ReviewItem>,
 }
 
 #[derive(Deserialize)]

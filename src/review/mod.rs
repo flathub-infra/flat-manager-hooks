@@ -38,7 +38,7 @@ pub fn do_validation<C: ValidateConfig>(
 }
 
 pub fn do_review<C: Config>(config: &C) -> Result<()> {
-    let (repo, refs, mut result) = do_validation(config)?;
+    let (_, _, result) = do_validation(config)?;
 
     /* If any errors were found, mark the check as failed */
     if result.diagnostics.iter().any(|d| !d.is_warning) {
@@ -47,7 +47,7 @@ pub fn do_review<C: Config>(config: &C) -> Result<()> {
         return Ok(());
     }
 
-    let request = review_build(config, &repo, &refs, &mut result)?;
+    let request = review_build(config)?;
 
     /* Make sure nothing failed while collecting metadata for the moderation step */
     if result.diagnostics.iter().any(|d| !d.is_warning) {
