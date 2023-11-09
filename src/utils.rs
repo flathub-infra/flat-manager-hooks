@@ -17,15 +17,16 @@ pub fn arch_from_ref(refstring: &str) -> String {
 }
 
 pub const APP_SUFFIXES: [&str; 3] = ["Sources", "Debug", "Locale"];
-pub const APPID_SKIPLIST: [&str; 8] = [
+pub const APPID_SKIPLIST: [&str; 9] = [
+    "net.pcsx2.PCSX2",
+    "net.wz2100.wz2100",
+    "om.obsproject.Studio",
     "org.freedesktop.Platform.ClInfo",
     "org.freedesktop.Platform.GlxInfo",
-    "org.freedesktop.Platform.VulkanInfo",
     "org.freedesktop.Platform.VaInfo",
-    "org.mozilla.firefox",
+    "org.freedesktop.Platform.VulkanInfo",
     "org.mozilla.Thunderbird",
-    "om.obsproject.Studio",
-    "net.pcsx2.PCSX2",
+    "org.mozilla.firefox",
 ];
 
 pub fn app_id_from_ref(refstring: &str) -> String {
