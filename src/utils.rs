@@ -17,10 +17,9 @@ pub fn arch_from_ref(refstring: &str) -> String {
 }
 
 pub const APP_SUFFIXES: [&str; 3] = ["Sources", "Debug", "Locale"];
-pub const APPID_SKIPLIST: [&str; 9] = [
+pub const APPID_SKIPLIST: [&str; 8] = [
     "net.pcsx2.PCSX2",
     "net.wz2100.wz2100",
-    "om.obsproject.Studio",
     "org.freedesktop.Platform.ClInfo",
     "org.freedesktop.Platform.GlxInfo",
     "org.freedesktop.Platform.VaInfo",
