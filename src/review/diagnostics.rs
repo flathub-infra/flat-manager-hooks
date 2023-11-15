@@ -19,7 +19,10 @@ pub enum DiagnosticInfo {
     /// The appstream file is missing or couldn't be read.
     FailedToLoadAppstream { path: String, error: String },
     /// There is a problem in one of the appstream files.
-    FlatpakBuilderLint { stdout: serde_json::value::Value, stderr: String },
+    FlatpakBuilderLint {
+        stdout: serde_json::value::Value,
+        stderr: String,
+    },
     /// The app is FOSS, but a URL for the build's CI log was not given or is not a valid URL.
     MissingBuildLogUrl,
     /// A screenshot in appstream does not point to the flathub screenshot mirror.

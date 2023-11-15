@@ -1,14 +1,10 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    config::Config,
-};
+use crate::config::Config;
 
 /// Review the metadata for a build and create a review request to send to the backend.
-pub fn review_build<C: Config>(
-    config: &C,
-) -> Result<ReviewRequest> {
+pub fn review_build<C: Config>(config: &C) -> Result<ReviewRequest> {
     /* Collect the app's metadata and send it to the backend, to see if it needs to be held for review */
     let request = ReviewRequest {
         build_id: config.get_build_id()?,
