@@ -12,10 +12,6 @@ use ostree::{
     MutableTree, Repo, RepoFile,
 };
 
-pub fn arch_from_ref(refstring: &str) -> String {
-    refstring.split('/').nth(2).unwrap().to_string()
-}
-
 pub const APP_SUFFIXES: [&str; 3] = ["Sources", "Debug", "Locale"];
 pub const APPID_SKIPLIST: [&str; 8] = [
     "net.pcsx2.PCSX2",

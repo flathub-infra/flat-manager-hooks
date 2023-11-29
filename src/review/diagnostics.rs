@@ -25,13 +25,6 @@ pub enum DiagnosticInfo {
     },
     /// The app is FOSS, but a URL for the build's CI log was not given or is not a valid URL.
     MissingBuildLogUrl,
-    /// A screenshot in appstream does not point to the flathub screenshot mirror.
-    /// The ref contains an executable or shared library file that is for a different architecture than the ref.
-    WrongArchExecutable {
-        path: String,
-        detected_arch: String,
-        detected_arch_code: u16,
-    },
 }
 
 impl ValidationDiagnostic {
@@ -43,13 +36,6 @@ impl ValidationDiagnostic {
         }
     }
 
-    pub fn new_warning(info: DiagnosticInfo, refstring: Option<String>) -> Self {
-        Self {
-            refstring,
-            is_warning: true,
-            info,
-        }
-    }
     pub fn new_failed_to_load_appstream(path: &str, error: &str, refstring: &str) -> Self {
         Self::new(
             DiagnosticInfo::FailedToLoadAppstream {

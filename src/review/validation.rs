@@ -13,10 +13,7 @@ use crate::{
     utils::{app_id_from_ref, get_appstream_path, is_primary_ref, load_appstream},
 };
 
-use super::{
-    diagnostics::{CheckResult, DiagnosticInfo, ValidationDiagnostic},
-    review_files::review_files,
-};
+use super::diagnostics::{CheckResult, DiagnosticInfo, ValidationDiagnostic};
 
 /// Run all of the validations on a build.
 pub fn validate_build<C: ValidateConfig>(
@@ -45,7 +42,7 @@ pub fn validate_primary_ref<C: ValidateConfig>(
     refstring: &str,
     checksum: &str,
 ) -> Result<Vec<ValidationDiagnostic>> {
-    let (ref_files, _checksum) = repo.read_commit(checksum, Cancellable::NONE)?;
+    let (_, _checksum) = repo.read_commit(checksum, Cancellable::NONE)?;
 
     let mut diagnostics = vec![];
     diagnostics.extend(validate_flatpak_build(refstring)?);
@@ -55,9 +52,6 @@ pub fn validate_primary_ref<C: ValidateConfig>(
     diagnostics.extend(validate_appstream_catalog_file(
         config, build, repo, checksum, refstring,
     )?);
-
-    /* Run validations that cover all the files, e.g. warnings for executables with the wrong target architecture */
-    diagnostics.extend(review_files(&ref_files, refstring)?);
 
     Ok(diagnostics)
 }

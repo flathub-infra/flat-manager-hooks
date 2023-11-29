@@ -12,7 +12,6 @@ use crate::review::validation::validate_build;
 
 pub mod diagnostics;
 pub mod moderation;
-mod review_files;
 mod validation;
 
 pub fn do_validation<C: ValidateConfig>(
