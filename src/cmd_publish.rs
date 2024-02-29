@@ -205,7 +205,7 @@ pub fn rewrite_appstream_xml(
     let component = &mut components[0];
 
     // Delete all existing "flathub::" keys
-    for metadata_tag in component.find_all_mut("metadata") {
+    for metadata_tag in component.find_all_mut("custom") {
         metadata_tag.retain_children(|value: &Element| {
             if let Some(key) = value.get_attr("key") {
                 if key.to_lowercase().starts_with("flathub::") {
@@ -492,14 +492,14 @@ mod tests {
             r#"<?xml version="1.0" encoding="utf-8"?><components>
 <component>
     <id>org.flatpak.Test</id>
-    <metadata>
+    <custom>
         <value key="flathub::verification::verified">true</value>
         <value key="flathub::verification::timestamp">2023-01-01T00:00:00</value>
         <value key="flathub::verification::method">website</value>
         <value key="flathub::verification::website">example.com</value>
         <value key="flathub::verification::login_is_organization">false</value>
         <value key="flathub::build::build_log_url">https://example.com</value>
-    </metadata>
+    </custom>
 </component>
 </components>"#,
         )
@@ -552,10 +552,10 @@ mod tests {
             r#"<?xml version="1.0" encoding="utf-8"?><components>
 <component>
     <id>org.flatpak.Test</id>
-    <metadata>
+    <custom>
         <value key="flathub::pricing::recommended_donation">1</value>
         <value key="flathub::build::build_ref_log_url">https://example.com</value>
-    </metadata>
+    </custom>
 </component>
 </components>"#,
         )
@@ -567,10 +567,10 @@ mod tests {
 <components>
     <component>
         <id>org.flatpak.Test</id>
-        <metadata>
+        <custom>
             <value key="flathub::pricing::recommended_donation">1</value>
             <value key="flathub::build_log_url">https://example.com</value>
-        </metadata>
+        </custom>
     </component>
 </components>"#;
 
@@ -603,9 +603,9 @@ mod tests {
             r#"<?xml version="1.0" encoding="utf-8"?><components>
 <component>
     <id>org.flatpak.Test</id>
-    <metadata>
+    <custom>
         <value key="flathub::pricing::minimum_payment">2</value>
-    </metadata>
+    </custom>
 </component>
 </components>"#,
         )
