@@ -14,7 +14,6 @@ use ostree::{
 
 pub const APP_SUFFIXES: [&str; 3] = ["Sources", "Debug", "Locale"];
 pub const APPID_SKIPLIST: [&str; 8] = [
-    "net.pcsx2.PCSX2",
     "net.wz2100.wz2100",
     "org.freedesktop.Platform.ClInfo",
     "org.freedesktop.Platform.GlxInfo",
