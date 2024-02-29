@@ -19,6 +19,7 @@ pub const APPID_SKIPLIST: [&str; 8] = [
     "org.freedesktop.Platform.ClInfo",
     "org.freedesktop.Platform.GlxInfo",
     "org.freedesktop.Platform.VaInfo",
+    "org.freedesktop.Platform.VdpauInfo",
     "org.freedesktop.Platform.VulkanInfo",
     "org.mozilla.Thunderbird",
     "org.mozilla.firefox",
