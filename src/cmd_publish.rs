@@ -269,6 +269,11 @@ pub fn rewrite_appstream_xml(
             let custom = find_or_create_element(component, "custom", None);
             find_or_create_element(custom, "value", Some(("key", key))).set_text(value);
 
+            // the <metadata> element isn't compliant with appstream
+            // leaving for backwards compatibility with older GNOME Software releases
+            let metadata = find_or_create_element(component, "metadata", None);
+            find_or_create_element(metadata, "value", Some(("key", key))).set_text(value);
+
             changed = true;
         }
     };
