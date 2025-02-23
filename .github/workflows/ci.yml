@@ -1,51 +1,34 @@
-on: [push, pull_request]
+name: CI
 
-name: Continuous integration
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: main
 
 jobs:
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-22.04
+  CI:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-          components: rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - uses: actions/checkout@v4
 
-  clippy:
-    name: Test/Clippy
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-          components: clippy
+          components: rustfmt, clippy
 
       - name: Install dependencies
         run: sudo apt-get install -y libostree-dev flatpak-builder
 
-      - name: Check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
+      - name: Format
+        run: cargo fmt --all --check
 
       - name: Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+        run: cargo clippy -- -D warnings
+
+      - name: Check
+        run: cargo check
 
       - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        run: cargo test
