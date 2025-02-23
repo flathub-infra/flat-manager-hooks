@@ -372,8 +372,8 @@ pub fn rewrite_metadata(metadata: &VariantDict, storefront_info: &StorefrontInfo
         .pricing
         .as_ref()
         .map(|pricing| {
-            pricing.recommended_donation.map_or(false, |x| x > 0)
-                || pricing.minimum_payment.map_or(false, |x| x > 0)
+            pricing.recommended_donation.is_some_and(|x| x > 0)
+                || pricing.minimum_payment.is_some_and(|x| x > 0)
         })
         .unwrap_or(false);
 
@@ -394,9 +394,9 @@ fn list_subsets(storefront_info: &StorefrontInfo) -> Vec<String> {
     let verified = storefront_info
         .verification
         .as_ref()
-        .map_or(false, |x| x.verified);
+        .is_some_and(|x| x.verified);
 
-    let floss = storefront_info.is_free_software.map_or(false, |x| x);
+    let floss = storefront_info.is_free_software.is_some_and(|x| x);
 
     if verified {
         subsets.push("verified".to_string());
