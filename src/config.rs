@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use log::info;
 use reqwest::blocking::Client;
 use serde::Deserialize;
@@ -96,15 +96,23 @@ impl ValidateConfig for RegularConfig {
 
 impl Config for RegularConfig {
     fn get_job_id(&self) -> Result<i64> {
-        Ok(std::env::var("FLAT_MANAGER_JOB_ID")?.parse()?)
+        std::env::var("FLAT_MANAGER_JOB_ID")
+            .context("Missing environment variable: FLAT_MANAGER_JOB_ID")?
+            .parse()
+            .context("Failed to parse FLAT_MANAGER_JOB_ID")
     }
 
     fn get_build_id(&self) -> Result<i64> {
-        Ok(std::env::var("FLAT_MANAGER_BUILD_ID")?.parse()?)
+        std::env::var("FLAT_MANAGER_BUILD_ID")
+            .context("Missing environment variable: FLAT_MANAGER_BUILD_ID")?
+            .parse()
+            .context("Failed to parse FLAT_MANAGER_BUILD_ID")
     }
 
     fn get_is_republish(&self) -> Result<bool> {
-        Ok(std::env::var("FLAT_MANAGER_IS_REPUBLISH")? == "true")
+        Ok(std::env::var("FLAT_MANAGER_IS_REPUBLISH")
+            .context("Missing environment variable: FLAT_MANAGER_IS_REPUBLISH")?
+            == "true")
     }
 
     fn validation_observe_only(&self) -> bool {
