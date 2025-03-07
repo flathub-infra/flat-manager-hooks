@@ -11,7 +11,7 @@ elementtree = "1.2.3"
 elf = "0.7.3"
 env_logger = "0.10.0"
 flate2 = "1.0.27"
-log = "0.4.20"
+log = "0.4.21"
 ostree = { version = "0.19.1", features = ["v2021_5"] }
 reqwest = { version = "0.11.24", features = ["json", "blocking"] }
 serde = { version = "1.0.197", features = ["derive"] }
