@@ -38,24 +38,24 @@ impl StorefrontInfo {
         let client = reqwest::blocking::Client::new();
 
         // Fetch the storefront info
-        let response = retry(|| {
-            client
+        let storefront_info = retry(|| {
+            let response = client
                 .get(&endpoint)
                 .query(&[("app_id", app_id)])
                 .send()
-                .map_err(convert_err)
-        })?;
+                .map_err(convert_err)?;
 
-        let storefront_info = if response.status() == 404 {
-            info!("storefront-info endpoint returned 404; this must be a new app");
-            Default::default()
-        } else {
+            if response.status() == 404 {
+                info!("storefront-info endpoint returned 404; this must be a new app");
+                return Ok(StorefrontInfo::default());
+            }
+
             response
                 .error_for_status()
                 .map_err(convert_err)?
                 .json::<StorefrontInfo>()
-                .map_err(convert_err)?
-        };
+                .map_err(convert_err)
+        })?;
 
         Ok(storefront_info)
     }
@@ -75,10 +75,18 @@ pub fn get_is_free_software(
             query.push(("license", license));
         }
 
-        let response =
-            client.get(&endpoint).query(&query).send().map_err(|e| {
+        client
+            .get(&endpoint)
+            .query(&query)
+            .send()
+            .map_err(|e| {
                 anyhow!("Failed to fetch is-free-software from {}: {}", &endpoint, e)
-            })?;
-        response.json().map_err(Into::into)
+            })?
+            .error_for_status()
+            .map_err(|e| {
+                anyhow!("Failed to fetch is-free-software from {}: {}", &endpoint, e)
+            })?
+            .json()
+            .map_err(Into::into)
     })
 }
