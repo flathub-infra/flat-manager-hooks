@@ -350,6 +350,18 @@ pub fn rewrite_appstream_xml(
         }
     }
 
+    let app_id = refstring.split('/').nth(1).unwrap_or("flathub");
+
+    if !storefront_info
+        .verification
+        .as_ref()
+        .is_some_and(|v| v.verified)
+    {
+        let bugtracker_url = find_or_create_element(component, "url", Some(("type", "bugtracker")));
+        bugtracker_url.set_text(format!("https://github.com/flathub/{}/issues", app_id));
+        changed = true;
+    }
+
     if changed {
         Ok(root.to_string()?)
     } else {
@@ -457,6 +469,7 @@ mod tests {
 <components>
     <component>
         <id>org.flatpak.Test</id>
+        <url type="bugtracker">https://flatpak.org/issues</url>
     </component>
 </components>"#;
 
@@ -492,6 +505,7 @@ mod tests {
             r#"<?xml version="1.0" encoding="utf-8"?><components>
 <component>
     <id>org.flatpak.Test</id>
+    <url type="bugtracker">https://flatpak.org/issues</url>
     <custom>
         <value key="flathub::verification::verified">true</value>
         <value key="flathub::verification::timestamp">2023-01-01T00:00:00</value>
@@ -511,6 +525,7 @@ mod tests {
 <components>
     <component>
         <id>org.flatpak.Test</id>
+        <url type="bugtracker">https://example.com/issues</url>
     </component>
 </components>"#;
 
@@ -552,6 +567,7 @@ mod tests {
             r#"<?xml version="1.0" encoding="utf-8"?><components>
 <component>
     <id>org.flatpak.Test</id>
+    <url type="bugtracker">https://github.com/flathub/org.flatpak.Test/issues</url>
     <custom>
         <value key="flathub::pricing::recommended_donation">1</value>
         <value key="flathub::build::build_ref_log_url">https://example.com</value>
@@ -606,6 +622,7 @@ mod tests {
     <custom>
         <value key="flathub::pricing::minimum_payment">2</value>
     </custom>
+    <url type="bugtracker">https://github.com/flathub/org.flatpak.Test/issues</url>
 </component>
 </components>"#,
         )
