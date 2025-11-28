@@ -15,16 +15,6 @@ pub fn review_build<C: Config>(config: &C) -> Result<ReviewRequest> {
 }
 
 #[derive(Debug, Serialize)]
-pub struct ReviewItem {
-    name: Option<String>,
-    summary: Option<String>,
-    developer_name: Option<String>,
-    project_license: Option<String>,
-    project_group: Option<String>,
-    compulsory_for_desktop: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
 pub struct ReviewRequest {
     pub build_id: i64,
     pub job_id: i64,
