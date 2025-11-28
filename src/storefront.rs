@@ -79,13 +79,9 @@ pub fn get_is_free_software(
             .get(&endpoint)
             .query(&query)
             .send()
-            .map_err(|e| {
-                anyhow!("Failed to fetch is-free-software from {}: {}", &endpoint, e)
-            })?
+            .map_err(|e| anyhow!("Failed to fetch is-free-software from {}: {}", &endpoint, e))?
             .error_for_status()
-            .map_err(|e| {
-                anyhow!("Failed to fetch is-free-software from {}: {}", &endpoint, e)
-            })?
+            .map_err(|e| anyhow!("Failed to fetch is-free-software from {}: {}", &endpoint, e))?
             .json()
             .map_err(Into::into)
     })
