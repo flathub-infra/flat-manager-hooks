@@ -45,7 +45,7 @@ pub fn validate_primary_ref<C: ValidateConfig>(
     let (_, _checksum) = repo.read_commit(checksum, Cancellable::NONE)?;
 
     let mut diagnostics = vec![];
-    diagnostics.extend(validate_flatpak_build(refstring)?);
+    diagnostics.extend(validate_flatpak_build(refstring, build)?);
 
     /* Validate the appstream catalog file. This is the one that shows up on the website and in software centers.
     (The other ones are exported to the user's system.) */
@@ -56,13 +56,15 @@ pub fn validate_primary_ref<C: ValidateConfig>(
     Ok(diagnostics)
 }
 
-fn run_flatpak_builder_lint(refstring: &str) -> Result<Vec<ValidationDiagnostic>> {
+fn run_flatpak_builder_lint(refstring: &str, repo: &str) -> Result<Vec<ValidationDiagnostic>> {
     let output = Command::new("flatpak")
         .args([
             "run",
             "--command=flatpak-builder-lint",
             "org.flatpak.Builder",
             "--exceptions",
+            "--exceptions-repo",
+            repo,
             "repo",
             "--cwd",
             "noop",
@@ -90,10 +92,13 @@ fn run_flatpak_builder_lint(refstring: &str) -> Result<Vec<ValidationDiagnostic>
     }
 }
 
-fn validate_flatpak_build(refstring: &str) -> Result<Vec<ValidationDiagnostic>> {
+fn validate_flatpak_build(
+    refstring: &str,
+    build: &BuildExtended,
+) -> Result<Vec<ValidationDiagnostic>> {
     let mut diagnostics = vec![];
 
-    diagnostics.extend(run_flatpak_builder_lint(refstring)?);
+    diagnostics.extend(run_flatpak_builder_lint(refstring, &build.build.repo)?);
 
     Ok(diagnostics)
 }
