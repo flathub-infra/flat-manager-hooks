@@ -13,13 +13,14 @@ use ostree::{
 };
 
 pub const APP_SUFFIXES: [&str; 3] = ["Sources", "Debug", "Locale"];
-pub const APPID_SKIPLIST: [&str; 8] = [
+pub const APPID_SKIPLIST: [&str; 9] = [
     "net.wz2100.wz2100",
     "org.freedesktop.Platform.ClInfo",
     "org.freedesktop.Platform.GlxInfo",
     "org.freedesktop.Platform.VaInfo",
     "org.freedesktop.Platform.VdpauInfo",
     "org.freedesktop.Platform.VulkanInfo",
+    "org.mozilla.thunderbird",
     "org.mozilla.Thunderbird",
     "org.mozilla.firefox",
 ];
