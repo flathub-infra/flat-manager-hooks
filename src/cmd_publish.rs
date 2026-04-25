@@ -264,6 +264,49 @@ pub fn rewrite_appstream_xml(
         }
     }
 
+    let manifest_url: Option<String> = {
+        let mut found = None;
+
+        for metadata_tag in component.find_all_mut("metadata") {
+            metadata_tag.retain_children(|value: &Element| {
+                if value.get_attr("key").map(|k| k.to_lowercase())
+                    == Some("flathub::manifest".to_string())
+                {
+                    if found.is_none() {
+                        found = Some(value.text().to_owned());
+                    }
+                    changed = true;
+                    false
+                } else {
+                    true
+                }
+            });
+        }
+
+        component.retain_children(|child: &Element| {
+            if child.tag().name() == "metadata" {
+                let keep = child.child_count() > 0;
+                if !keep {
+                    changed = true;
+                }
+                keep
+            } else {
+                true
+            }
+        });
+
+        found
+    };
+
+    if let Some(url) = manifest_url {
+        let custom = find_or_create_element(component, "custom", None);
+        if find_element(custom, "value", Some(("key", "flathub::manifest"))).is_none() {
+            find_or_create_element(custom, "value", Some(("key", "flathub::manifest")))
+                .set_text(&url);
+            changed = true;
+        }
+    }
+
     let mut set_value = |key: &str, value: Option<&str>| {
         if let Some(value) = value {
             let custom = find_or_create_element(component, "custom", None);
@@ -626,5 +669,123 @@ mod tests {
 </component>
 </components>"#,
         )
+    }
+
+    #[test]
+    fn test_metadata_tag_migration() {
+        let input1 = r#"<?xml version="1.0" encoding="utf-8"?>
+<components>
+  <component>
+    <id>org.flatpak.Test</id>
+    <metadata>
+      <value key="flathub::manifest">https://example.com/manifest</value>
+    </metadata>
+  </component>
+</components>"#;
+
+        let out1 = rewrite_appstream_xml(
+            &StorefrontInfo::default(),
+            "app/org.flatpak.Test/x86_64/stable",
+            &None,
+            input1,
+        )
+        .unwrap();
+
+        assert!(!out1.contains("<metadata>"));
+        assert!(out1.contains("<custom>"));
+        assert!(out1.contains(r#"key="flathub::manifest""#));
+        assert!(out1.contains("https://example.com/manifest"));
+
+        let input2 = r#"<?xml version="1.0" encoding="utf-8"?>
+<components>
+  <component>
+    <id>org.flatpak.Test</id>
+    <metadata>
+      <value key="flathub::manifest">https://example.com/manifest</value>
+      <value key="foo">bar</value>
+    </metadata>
+  </component>
+</components>"#;
+
+        let out2 = rewrite_appstream_xml(
+            &StorefrontInfo::default(),
+            "app/org.flatpak.Test/x86_64/stable",
+            &None,
+            input2,
+        )
+        .unwrap();
+
+        assert!(out2.contains("<metadata>"));
+        assert!(out2.contains(r#"<value key="foo">bar</value>"#));
+        {
+            use elementtree::Element;
+            let root = Element::from_reader(out2.as_bytes()).unwrap();
+            let component = root.find("component").unwrap();
+            for metadata in component.find_all("metadata") {
+                for value in metadata.find_all("value") {
+                    assert_ne!(value.get_attr("key"), Some("flathub::manifest"));
+                }
+            }
+        }
+        assert!(out2.contains("<custom>"));
+        assert!(out2.contains(r#"key="flathub::manifest""#));
+        assert!(out2.contains("https://example.com/manifest"));
+
+        let input3 = r#"<?xml version="1.0" encoding="utf-8"?>
+<components>
+  <component>
+    <id>org.flatpak.Test</id>
+    <metadata>
+      <value key="flathub::manifest">https://example.com/manifest</value>
+    </metadata>
+    <custom>
+      <value key="flathub::manifest">https://example.org/manifest</value>
+    </custom>
+  </component>
+</components>"#;
+
+        let out3 = rewrite_appstream_xml(
+            &StorefrontInfo::default(),
+            "app/org.flatpak.Test/x86_64/stable",
+            &None,
+            input3,
+        )
+        .unwrap();
+
+        assert!(!out3.contains("<metadata>"));
+        let occurrences = out3.matches(r#"key="flathub::manifest""#).count();
+        assert_eq!(occurrences, 1);
+        assert!(
+            out3.contains(r#"<value key="flathub::manifest">https://example.org/manifest</value>"#)
+        );
+        assert!(!out3.contains("https://example.com/manifest"));
+
+        let input4 = r#"<?xml version="1.0" encoding="utf-8"?>
+<components>
+  <component>
+    <id>org.flatpak.Test</id>
+    <metadata>
+      <value key="flathub::manifest">https://example.com/manifest</value>
+    </metadata>
+    <custom>
+      <value key="foo">bar</value>
+      <value key="baz">moo</value>
+    </custom>
+  </component>
+</components>"#;
+
+        let out4 = rewrite_appstream_xml(
+            &StorefrontInfo::default(),
+            "app/org.flatpak.Test/x86_64/stable",
+            &None,
+            input4,
+        )
+        .unwrap();
+
+        assert!(!out4.contains("<metadata>"));
+        assert!(out4.contains(r#"<value key="foo">bar</value>"#));
+        assert!(out4.contains(r#"<value key="baz">moo</value>"#));
+        assert!(out4.contains(r#"key="flathub::manifest""#));
+        assert!(out4.contains("https://example.com/manifest"));
     }
 }
