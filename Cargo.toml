@@ -9,7 +9,7 @@ clap = { version = "4.5.61", features = ["derive"] }
 diff = "0.1.13"
 elementtree = "1.2.3"
 elf = "0.8.0"
-env_logger = "0.10.0"
+env_logger = "0.11.10"
 flate2 = "1.0.27"
 log = "0.4.20"
 ostree = { version = "0.20.5", features = ["v2021_5"] }
