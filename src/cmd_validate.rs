@@ -32,6 +32,7 @@ impl ValidateConfig for ValidateArgs {
                 app_id: None,
                 repo: String::from("stable"),
                 build_log_url: None,
+                token_type: None,
             },
             build_refs: vec![],
         })

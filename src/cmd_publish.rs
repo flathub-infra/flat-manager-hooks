@@ -536,6 +536,7 @@ mod tests {
                     app_id: None,
                     repo: "".to_owned(),
                     build_log_url: Some("https://example.com".to_string()),
+                    token_type: None,
                 },
                 build_refs: vec![],
             }),
@@ -589,6 +590,7 @@ mod tests {
                     app_id: None,
                     repo: "".to_owned(),
                     build_log_url: None,
+                    token_type: None,
                 },
                 build_refs: vec![
                     BuildRef {
@@ -650,6 +652,7 @@ mod tests {
                     app_id: None,
                     repo: "".to_owned(),
                     build_log_url: None,
+                    token_type: None,
                 },
                 build_refs: vec![],
             }),

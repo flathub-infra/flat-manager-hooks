@@ -17,6 +17,9 @@ use crate::{
 pub trait ValidateConfig {
     fn get_is_free_software(&self, app_id: &str, license: Option<&str>) -> Result<bool>;
     fn get_build(&self) -> Result<BuildExtended>;
+    fn get_flat_manager_build_id(&self) -> Option<String> {
+        None
+    }
 }
 
 pub trait Config: ValidateConfig {
@@ -91,6 +94,12 @@ impl ValidateConfig for RegularConfig {
                 .json::<BuildExtended>()
         })?;
         Ok(build)
+    }
+
+    fn get_flat_manager_build_id(&self) -> Option<String> {
+        std::env::var("FLAT_MANAGER_BUILD_ID")
+            .ok()
+            .filter(|build_id| !build_id.is_empty())
     }
 }
 
