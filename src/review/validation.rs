@@ -1,7 +1,8 @@
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use elementtree::Element;
 use ostree::gio::Cancellable;
 use ostree::Repo;
@@ -15,6 +16,53 @@ use crate::{
 
 use super::diagnostics::{CheckResult, DiagnosticInfo, ValidationDiagnostic};
 
+pub struct LintContext {
+    repo_path: PathBuf,
+    parent_repo_path: Option<PathBuf>,
+    build_id: Option<String>,
+    build_info: Option<String>,
+}
+
+impl LintContext {
+    fn new<C: ValidateConfig>(config: &C, build: &BuildExtended, repo: &Repo) -> Result<Self> {
+        let (repo_path, parent_repo_path) = repo_mount_paths(repo)?;
+        let build_id = config.get_flat_manager_build_id();
+        let build_info = build_id
+            .as_ref()
+            .map(|_| serde_json::to_string(&build.linter_projection()))
+            .transpose()?;
+
+        Ok(Self {
+            repo_path,
+            parent_repo_path,
+            build_id,
+            build_info,
+        })
+    }
+}
+
+fn repo_mount_paths(repo: &Repo) -> Result<(PathBuf, Option<PathBuf>)> {
+    let repo_path =
+        std::env::current_dir().context("Failed to determine the build repository path")?;
+    let core_parent = repo.config().string("core", "parent").ok();
+
+    Ok((
+        repo_path.clone(),
+        parent_mount_path(&repo_path, core_parent.as_deref()),
+    ))
+}
+
+fn parent_mount_path(repo_path: &Path, core_parent: Option<&str>) -> Option<PathBuf> {
+    core_parent.map(|parent| {
+        let parent = PathBuf::from(parent);
+        if parent.is_absolute() {
+            parent
+        } else {
+            repo_path.join(parent)
+        }
+    })
+}
+
 /// Run all of the validations on a build.
 pub fn validate_build<C: ValidateConfig>(
     config: &C,
@@ -23,10 +71,17 @@ pub fn validate_build<C: ValidateConfig>(
     refs: &HashMap<String, String>,
     result: &mut CheckResult,
 ) -> Result<()> {
+    let lint_context = LintContext::new(config, build, repo)?;
+
     for (refstring, checksum) in refs.iter() {
         if is_primary_ref(refstring) {
             result.diagnostics.extend(validate_primary_ref(
-                config, build, repo, refstring, checksum,
+                config,
+                build,
+                &lint_context,
+                repo,
+                refstring,
+                checksum,
             )?);
         }
     }
@@ -38,6 +93,7 @@ pub fn validate_build<C: ValidateConfig>(
 pub fn validate_primary_ref<C: ValidateConfig>(
     config: &C,
     build: &BuildExtended,
+    lint_context: &LintContext,
     repo: &Repo,
     refstring: &str,
     checksum: &str,
@@ -45,7 +101,7 @@ pub fn validate_primary_ref<C: ValidateConfig>(
     let (_, _checksum) = repo.read_commit(checksum, Cancellable::NONE)?;
 
     let mut diagnostics = vec![];
-    diagnostics.extend(validate_flatpak_build(refstring, build)?);
+    diagnostics.extend(validate_flatpak_build(refstring, build, lint_context)?);
 
     /* Validate the appstream catalog file. This is the one that shows up on the website and in software centers.
     (The other ones are exported to the user's system.) */
@@ -56,20 +112,49 @@ pub fn validate_primary_ref<C: ValidateConfig>(
     Ok(diagnostics)
 }
 
-fn run_flatpak_builder_lint(refstring: &str, repo: &str) -> Result<Vec<ValidationDiagnostic>> {
-    let output = Command::new("flatpak")
+fn run_flatpak_builder_lint(
+    refstring: &str,
+    repo: &str,
+    lint_context: &LintContext,
+) -> Result<Vec<ValidationDiagnostic>> {
+    let mut command = Command::new("flatpak");
+    command
         .args([
             "run",
-            "--command=flatpak-builder-lint",
-            "org.flatpak.Builder",
-            "--exceptions",
-            "--exceptions-repo",
-            repo,
-            "repo",
-            "--cwd",
-            "noop",
+            "--sandbox",
+            "--clear-env",
+            "--share=network",
+            "--no-documents-portal",
         ])
-        .output()?;
+        .arg(format!(
+            "--filesystem={}:ro",
+            lint_context.repo_path.display()
+        ));
+
+    if let Some(parent_repo_path) = &lint_context.parent_repo_path {
+        command.arg(format!("--filesystem={}:ro", parent_repo_path.display()));
+    }
+
+    command
+        .args([
+            "--env=TMPDIR=/tmp",
+            "--env=XDG_CACHE_HOME=/tmp/lint-cache",
+            "--env=XDG_STATE_HOME=/tmp/lint-state",
+        ])
+        .arg(format!("--cwd={}", lint_context.repo_path.display()));
+
+    if let (Some(build_id), Some(build_info)) = (&lint_context.build_id, &lint_context.build_info) {
+        command
+            .arg(format!("--env=FLAT_MANAGER_BUILD_ID={build_id}"))
+            .arg(format!("--env=FLAT_MANAGER_BUILD_INFO={build_info}"));
+    }
+
+    command
+        .args(["--command=flatpak-builder-lint", "org.flatpak.Builder"])
+        .args(["--exceptions", "--exceptions-repo", repo])
+        .args(["repo", "--cwd", "noop"]);
+
+    let output = command.output()?;
 
     if !output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -95,10 +180,15 @@ fn run_flatpak_builder_lint(refstring: &str, repo: &str) -> Result<Vec<Validatio
 fn validate_flatpak_build(
     refstring: &str,
     build: &BuildExtended,
+    lint_context: &LintContext,
 ) -> Result<Vec<ValidationDiagnostic>> {
     let mut diagnostics = vec![];
 
-    diagnostics.extend(run_flatpak_builder_lint(refstring, &build.build.repo)?);
+    diagnostics.extend(run_flatpak_builder_lint(
+        refstring,
+        &build.build.repo,
+        lint_context,
+    )?);
 
     Ok(diagnostics)
 }
@@ -217,4 +307,36 @@ fn validate_appstream_component(
     }
 
     Ok(diagnostics)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parent_mount_path_preserves_absolute_core_parent() {
+        assert_eq!(
+            parent_mount_path(
+                Path::new("/tank/repo/builds/332441"),
+                Some("/tank/repo/test")
+            ),
+            Some(PathBuf::from("/tank/repo/test"))
+        );
+    }
+
+    #[test]
+    fn parent_mount_path_resolves_relative_core_parent() {
+        assert_eq!(
+            parent_mount_path(Path::new("/tank/repo/builds/332441"), Some("parent")),
+            Some(PathBuf::from("/tank/repo/builds/332441/parent"))
+        );
+    }
+
+    #[test]
+    fn parent_mount_path_absent_without_core_parent() {
+        assert_eq!(
+            parent_mount_path(Path::new("/tank/repo/builds/332441"), None),
+            None
+        );
+    }
 }
