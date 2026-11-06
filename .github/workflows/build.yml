@@ -1,0 +1,124 @@
+name: Ubuntu binary
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.repository == 'flathub-infra/flat-manager-hooks' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      RUST_VERSION: 1.99.1
+      PACKAGE: ghcr.io/flathub-infra/flat-manager-hooks-binary
+      ARCHIVE: flathub-hooks-ubuntu-24.04-x86_64.tar.gz
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+
+      - name: Install Rust
+        run: rustup toolchain install "$RUST_VERSION" --profile minimal
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libostree-dev flatpak-builder
+
+      - name: Build release binary
+        run: cargo +"$RUST_VERSION" build --release --locked
+
+      - name: Smoke test binary
+        run: target/release/flathub-hooks --help
+
+      - name: Package binary
+        run: |
+          mkdir dist
+          tar -C target/release -czf "dist/$ARCHIVE" flathub-hooks
+          (cd dist && sha256sum "$ARCHIVE" > SHA256SUMS)
+          echo "BUILD_URL=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63
+        with:
+          url: https://github.com/oras-project/oras/releases/download/v1.3.6/oras_1.3.6_linux_amd64.tar.gz
+          checksum: 66fb0ad7206f3f6fa77ed5b552049d364ccf4b50b1684554f731f76302b52ca0
+
+      - name: Log in to GHCR
+        run: printf '%s' "$GH_TOKEN" | oras login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publish OCI artifact
+        id: publish
+        working-directory: dist
+        run: |
+          tag="sha-${GITHUB_SHA}-run-${GITHUB_RUN_ID}-attempt-${GITHUB_RUN_ATTEMPT}-ubuntu-24.04-amd64"
+          oras push "$PACKAGE:$tag" \
+            --artifact-type application/vnd.flathub.hooks.binary.v1 \
+            --annotation "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --annotation "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --annotation "org.opencontainers.image.url=${BUILD_URL}" \
+            --annotation "org.opencontainers.image.description=Ubuntu 24.04 amd64 flathub-hooks binary" \
+            --format json \
+            "$ARCHIVE:application/gzip" SHA256SUMS:text/plain > push.json
+          digest="$(jq -er '.digest' push.json)"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "REFERENCE=$PACKAGE@$digest" >> "$GITHUB_ENV"
+
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-name: ${{ env.PACKAGE }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Verify provenance and downloaded bundle
+        run: |
+          gh attestation verify "oci://$REFERENCE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/build.yml" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --deny-self-hosted-runners
+          oras pull "$REFERENCE" --output "$RUNNER_TEMP/download"
+          (cd "$RUNNER_TEMP/download" && sha256sum --check SHA256SUMS)
+          tar -C "$RUNNER_TEMP/download" -xzf "$RUNNER_TEMP/download/$ARCHIVE"
+          "$RUNNER_TEMP/download/flathub-hooks" --help
+
+      - name: Write download commands
+        run: |
+          {
+            printf '## Ubuntu 24.04 amd64 binary\n\n'
+            printf 'Source: [%s](%s/%s/commit/%s) | [Build](%s)\n\n' "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$BUILD_URL"
+            printf 'OCI artifact: %s\n\n' "\`$REFERENCE\`"
+            printf '%s\n' '~~~sh'
+            printf 'gh attestation verify oci://%s \\\n' "$REFERENCE"
+            printf '  --repo %s \\\n' "$GITHUB_REPOSITORY"
+            printf '  --signer-workflow %s/.github/workflows/build.yml \\\n' "$GITHUB_REPOSITORY"
+            printf '  --source-digest %s \\\n' "$GITHUB_SHA"
+            printf '  --source-ref %s \\\n' "$GITHUB_REF"
+            printf '  --deny-self-hosted-runners\n'
+            printf 'oras pull %s --output flathub-hooks-amd64\n' "$REFERENCE"
+            printf 'cd flathub-hooks-amd64\n'
+            printf 'sha256sum --check SHA256SUMS\n'
+            printf 'tar -xzf %s\n' "$ARCHIVE"
+            printf '%s\n\nSHA-256:\n\n%s\n' '~~~' '~~~text'
+            cat dist/SHA256SUMS
+            printf '%s\n\n' '~~~'
+            printf '%s\n\n' "Runtime packages: \`sudo apt-get install libostree-1-1\`"
+            printf '%s\n\n' 'Use the digest reference, not the discovery tag. GHCR administrators can still delete the artifact.'
+          } >> "$GITHUB_STEP_SUMMARY"
