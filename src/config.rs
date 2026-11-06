@@ -152,7 +152,7 @@ impl Config for RegularConfig {
     fn post_review_request(&self, request: ReviewRequest) -> Result<ReviewRequestResponse> {
         let endpoint = format!("{}/moderation/submit_review_request", self.backend_url);
         let client = reqwest::blocking::Client::new();
-        let convert_err = |e| anyhow!("Failed to contact backend {}: {}", &endpoint, e);
+        let convert_err = |e| anyhow!("Failed to contact backend {}: {}", endpoint, e);
 
         retry(|| {
             client
@@ -177,7 +177,7 @@ impl Config for RegularConfig {
 
         let endpoint = format!("{}/emails/build-notification", self.backend_url);
 
-        let convert_err = |e| anyhow!("Failed to contact backend {}: {}", &endpoint, e);
+        let convert_err = |e| anyhow!("Failed to contact backend {}: {}", endpoint, e);
 
         let app_id = if let Some(app_id) = &build.build.app_id {
             app_id.clone()

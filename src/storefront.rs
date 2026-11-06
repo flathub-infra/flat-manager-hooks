@@ -33,7 +33,7 @@ impl StorefrontInfo {
     pub fn fetch(backend_url: &str, app_id: &str) -> Result<Self> {
         let endpoint = format!("{backend_url}/purchases/storefront-info");
 
-        let convert_err = |e| anyhow!("Failed to fetch storefront info from {}: {}", &endpoint, e);
+        let convert_err = |e| anyhow!("Failed to fetch storefront info from {}: {}", endpoint, e);
 
         let client = reqwest::blocking::Client::new();
 
@@ -79,9 +79,9 @@ pub fn get_is_free_software(
             .get(&endpoint)
             .query(&query)
             .send()
-            .map_err(|e| anyhow!("Failed to fetch is-free-software from {}: {}", &endpoint, e))?
+            .map_err(|e| anyhow!("Failed to fetch is-free-software from {}: {}", endpoint, e))?
             .error_for_status()
-            .map_err(|e| anyhow!("Failed to fetch is-free-software from {}: {}", &endpoint, e))?
+            .map_err(|e| anyhow!("Failed to fetch is-free-software from {}: {}", endpoint, e))?
             .json()
             .map_err(Into::into)
     })
